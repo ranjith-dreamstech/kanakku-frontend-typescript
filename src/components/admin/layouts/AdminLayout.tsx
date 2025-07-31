@@ -35,8 +35,8 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
       <Sidebar isOpen={isSidebarOpen} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header toggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
-        <main className="flex-1 overflow-x-hidden overflow-y-auto">
-          {children || <Outlet />} {/* Render children or Outlet */}
+        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-white-50 p-6 z-0">
+          {children || <Outlet />}
         </main>
       </div>
     </div>

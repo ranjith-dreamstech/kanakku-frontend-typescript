@@ -22,3 +22,6 @@
 .animate-fade-in-up {
   animation: fade-in-up 0.2s ease-out;
 }
+main {
+  scroll-behavior: smooth;
+}

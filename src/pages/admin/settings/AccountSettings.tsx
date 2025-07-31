@@ -283,7 +283,7 @@ const AccountSettings: React.FC = () => {
     // Render the profile update form
     return (
         <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4 font-sans">
-            <div className="bg-white p-6 md:p-8 shadow-2xl rounded-xl w-full max-w-4xl">
+            <div className="bg-white p-6 md:p-8 shadow-2xl rounded-xl w-full">
                 <h2 className="text-3xl font-extrabold text-gray-800 mb-8 text-center">Account Settings</h2>
                 <form onSubmit={handleSubmit} className="space-y-8">
                     {/* General Information Section */}

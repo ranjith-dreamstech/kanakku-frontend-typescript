@@ -8,7 +8,7 @@ interface TableProps {
 
 const Table = ({ headers, children }: TableProps) => {
   return (
-    <div className="overflow-hidden rounded-xl shadow border border-gray-200 dark:border-gray-700">
+    <div className="overflow-x-auto rounded-xl shadow border border-gray-200 dark:border-gray-700">
       <table className="min-w-full bg-white dark:bg-gray-900 text-sm text-gray-800 dark:text-gray-100">
         <thead className="bg-gray-100 dark:bg-gray-800 uppercase text-xs font-semibold">
           <tr>

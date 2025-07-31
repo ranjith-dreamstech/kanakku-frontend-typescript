@@ -10,6 +10,7 @@ import {
   CircleDollarSignIcon,
   Settings2,
   Cpu,
+  GlobeIcon,
 } from 'lucide-react';
 
 // --- Type Definitions ---
@@ -35,7 +36,7 @@ export type NavItemType = NavLinkItem | NavCollapsibleItem | NavHeaderItem;
 // --- Navigation Data Structure ---
 const navItems: NavItemType[] = [
   { type: 'header', title: 'Main' },
-  { type: 'link', to: '/', icon: <Home size={20} />, title: 'Dashboard' },
+  { type: 'link', to: '/admin', icon: <Home size={20} />, title: 'Dashboard' },
   { type: 'header', title: 'Inventory & Sales' },
   {
     type: 'collapsible',
@@ -54,7 +55,10 @@ const navItems: NavItemType[] = [
     id: 'purchases',
     icon: <ShoppingBag size={20} />,
     title: 'Purchases',
-    children: [{ type: 'link', to: '/admin/suppliers', title: 'Suppliers' }],
+    children: [
+      { type: 'link', to: '/admin/purchase-orders', title: 'Purchase Orders' },
+      { type: 'link', to: '/admin/suppliers', title: 'Suppliers' }
+    ],
   },
   { type: 'header', title: 'Settings & Configurations' },
   {
@@ -74,6 +78,15 @@ const navItems: NavItemType[] = [
       },
       {
         type: 'collapsible',
+        id: 'website-settings',
+        title: 'Website Settings',
+        icon: <GlobeIcon size={16} />,
+        children: [
+          { type: 'link', to: '/admin/settings/company-settings', title: 'Company Settings' },
+        ],
+      },
+      {
+        type: 'collapsible',
         id: 'system-settings',
         title: 'System Settings',
         icon: <Cpu size={16} />,
@@ -87,7 +100,9 @@ const navItems: NavItemType[] = [
         title: 'Finance Settings',
         icon: <CircleDollarSignIcon size={16} />,
         children: [
+          { type: 'link', to: '/admin/settings/bank-accounts', title: 'Bank Accounts' },
           { type: 'link', to: '/admin/settings/tax-rates', title: 'Tax Rates' },
+          { type: 'link', to: '/admin/settings/tax-groups', title: 'Tax Groups' },
         ],
       },
     ],
@@ -101,8 +116,8 @@ const getTopLevelLinkClasses = ({ isActive }: { isActive: boolean }) =>
   }`;
 
 const getSubLinkClasses = ({ isActive }: { isActive: boolean }) =>
-  `block py-2 px-3 text-sm rounded-md transition-colors duration-200 ${
-    isActive ? 'bg-purple-100 text-purple-700' : 'text-gray-600 hover:bg-gray-100'
+  `block py-2 px-3 text-sm font-medium rounded-md transition-colors duration-200 ${
+    isActive ? 'text-purple-700' : 'text-gray-600 hover:bg-gray-100'
   }`;
 
 // --- NavItem Component (for top-level links) ---
@@ -110,10 +125,9 @@ const NavItem = ({ to, icon, title, isSidebarOpen }: { to: string; icon: ReactNo
   <NavLink to={to} end className={getTopLevelLinkClasses}>
     {({ isActive }) => (
       <>
-        {isActive && isSidebarOpen && <span className="absolute left-0 top-0 h-full w-1 bg-purple-700 rounded-r-full"></span>}
         <div className="flex items-center">
           {icon}
-          <span className={`ml-4 transition-opacity duration-300 whitespace-nowrap ${isSidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>{title}</span>
+          <span className={`ml-4 transition-opacity font-semibold duration-300 whitespace-nowrap ${isSidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>{title}</span>
         </div>
       </>
     )}
@@ -139,7 +153,7 @@ const CollapsibleNavItem = ({ item, isSidebarOpen, openMenus, activePath, onTogg
 
   const paddingClass = level === 1 ? 'p-3 my-1' : 'py-2 px-3';
   const activeClass = isActive && isSidebarOpen
-    ? (level === 1 ? 'bg-purple-600 text-white' : 'bg-purple-100 text-purple-700')
+    ? (level === 1 ? 'bg-purple-600 text-white' : ' text-purple-700')
     : 'text-gray-600 hover:bg-gray-100';
 
   return (
@@ -158,7 +172,7 @@ const CollapsibleNavItem = ({ item, isSidebarOpen, openMenus, activePath, onTogg
       </button>
 
       <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isOpen && isSidebarOpen ? 'max-h-screen' : 'max-h-0'}`}>
-        <div className="pt-1 space-y-1" style={{ paddingLeft: `${level * 1.5}rem` }}>
+        <div className="pt-1 space-y-1" style={{ paddingLeft: `${level * 1}rem` }}>
           {children.map(subItem => {
             switch (subItem.type) {
               case 'link':
@@ -237,7 +251,7 @@ const Sidebar = ({ isOpen, toggleSidebar }: { isOpen: boolean; toggleSidebar: ()
   };
 
   return (
-    <aside className={`bg-white text-gray-800 flex flex-col transition-all duration-300 ease-in-out shadow-lg z-10 ${isOpen ? 'w-64' : 'w-20'}`}>
+    <aside className={`bg-white text-gray-800 flex flex-col transition-all duration-300 ease-in-out  z-0 border-r border-gray-200 ${isOpen ? 'w-64' : 'w-20'}`}>
       <div className="p-4 flex items-center h-16 border-b border-gray-200">
         <svg className="w-8 h-8 text-purple-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
         <span className={`text-xl font-bold ml-2 text-gray-800 transition-opacity duration-200 whitespace-nowrap ${isOpen ? 'opacity-100' : 'opacity-0'}`}>
@@ -248,7 +262,7 @@ const Sidebar = ({ isOpen, toggleSidebar }: { isOpen: boolean; toggleSidebar: ()
         {navItems.map((item, index) => {
           switch (item.type) {
             case 'header':
-              return <p key={index} className={`mt-4 mb-1 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider transition-opacity duration-300 ease-in-out ${isOpen ? 'opacity-100' : 'opacity-0'}`}>{item.title}</p>;
+              return <p key={index} className={`mt-4 mb-1 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider transition-opacity duration-300 ease-in-out ${isOpen ? 'opacity-100' : 'hidden'}`}>{item.title}</p>;
             case 'link':
               return <NavItem key={item.to} to={item.to} icon={item.icon} title={item.title} isSidebarOpen={isOpen} />;
             case 'collapsible':

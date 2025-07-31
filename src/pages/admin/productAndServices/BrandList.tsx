@@ -1,15 +1,17 @@
-import { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import type { FC, ChangeEvent, FormEvent } from "react";
 import Constants from "../../../constants/api";
 import axios from "axios";
-import Table from "../../../components/admin/Tabls"
+import Table from "../../../components/admin/Tabls";
+import PaginationWrapper from "../../../components/admin/PaginationWrapper";
 import { EditIcon, TrashIcon, MoreVertical, Upload } from "lucide-react";
 import { toast } from "react-toastify";
 import Modal from "../../../components/admin/Modal";
 import { useSelector } from "react-redux";
 import type { RootState } from "../../../store";
 
-// Interface for the brand data coming from the API
+// Interface for the brand data
 interface Brand {
     _id: string;
     brand_name: string;
@@ -17,13 +19,21 @@ interface Brand {
     brandImageUrl: string;
 }
 
-// Interface for the state of the form, which can include a local File object
+// Interface for pagination data from the API
+interface BrandPagination {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+}
+
+// Interface for the form state
 interface BrandFormState {
     _id?: string;
     brand_name?: string;
     status?: boolean;
-    brand_image?: File | null; // For the file upload
-    brandImageUrl?: string; // For the preview
+    brand_image?: File | null;
+    brandImageUrl?: string;
 }
 
 // Interface for form validation errors
@@ -34,19 +44,26 @@ interface FormErrors {
 
 const BrandList: FC = () => {
     const { token } = useSelector((state: RootState) => state.auth);
-    const [showModal, setShowModal] = useState<boolean>(false);
-    const [brand, setBrand] = useState<BrandFormState>({});
+    const [searchParams, setSearchParams] = useSearchParams();
+
+    // State management
     const [brands, setBrands] = useState<Brand[]>([]);
-    const [formErrors, setFormErrors] = useState<FormErrors>({});
-    const dropdownRef = useRef<Array<HTMLTableRowElement | null>>([]);
-    const [activeDropdownIndex, setActiveDropdownIndex] = useState<number | null>(null);
+    const [pagination, setPagination] = useState<BrandPagination>({ total: 0, page: 1, limit: 10, totalPages: 1 });
+    const [showModal, setShowModal] = useState<boolean>(false);
     const [isEditMode, setIsEditMode] = useState<boolean>(false);
+    const [brand, setBrand] = useState<BrandFormState>({});
+    const [formErrors, setFormErrors] = useState<FormErrors>({});
+
+    // Dropdown and Delete Modal state
+    const dropdownRef = useRef<(HTMLTableRowElement | null)[]>([]);
+    const [activeDropdownIndex, setActiveDropdownIndex] = useState<number | null>(null);
     const [isDeleteModalOpen, setDeleteModalOpen] = useState<boolean>(false);
     const [itemToDelete, setItemToDelete] = useState<Brand | null>(null);
-    const [search, setSearch] = useState<string>("");
-    const [perPage, setPerPage] = useState<number>(10);
-    const [filteredData, setFilteredData] = useState<Brand[]>([]);
-    const [currentPage, setCurrentPage] = useState<number>(1);
+
+    // Get params from URL
+    const search = searchParams.get('search') || '';
+    const limit = Number(searchParams.get('limit') || 10);
+    const page = Number(searchParams.get('page') || 1);
 
     const initialFormState: BrandFormState = {
         brand_name: '',
@@ -55,9 +72,29 @@ const BrandList: FC = () => {
         brandImageUrl: ''
     };
 
-    // Fetch brands on component mount and set up click outside listener
+    // Fetch brands based on URL params
+    const fetchBrands = async (search?: string, limit?: number, page?: number): Promise<void> => {
+        try {
+            const response = await axios.get(Constants.FETCH_BRAND_LIST_URL, {
+                params: { search, limit, page },
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            // Assuming API response is { data: { brands: [], pagination: {} } }
+            setBrands(response.data.data.brands || []);
+            setPagination(response.data.data.pagination);
+        } catch (error) {
+            console.error("Error fetching brands:", error);
+            toast.error("Failed to fetch brands.");
+        }
+    };
+
+    // Effect to fetch data when params change
     useEffect(() => {
-        fetchBrands();
+        fetchBrands(search, limit, page);
+    }, [search, limit, page]);
+
+    // Effect for handling clicks outside the dropdown
+    useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             const clickedInside = dropdownRef.current.some(
                 (ref) => ref && ref.contains(event.target as Node)
@@ -69,36 +106,20 @@ const BrandList: FC = () => {
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
-
-    // Filter brands based on search query
-    useEffect(() => {
-        const filtered = brands.filter(
-            (brand) =>
-                brand.brand_name.toLowerCase().includes(search.toLowerCase())
-        );
-        setFilteredData(filtered);
-    }, [search, brands]);
-
-    // Pagination logic
-    const indexOfLast = currentPage * perPage;
-    const indexOfFirst = indexOfLast - perPage;
-    const currentBrands = filteredData.slice(indexOfFirst, indexOfLast);
-    const totalPages = Math.ceil(filteredData.length / perPage);
-
-    // Fetch brands from API
-    const fetchBrands = async (): Promise<void> => {
-        try {
-            const response = await axios.get<Brand[]>(Constants.FETCH_BRAND_LIST_URL, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            setBrands(response.data || []);
-        } catch (error) {
-            console.error("Error fetching brands:", error);
-            toast.error("Failed to fetch brands.");
-        }
+    
+    // Handlers for search and pagination
+    const handleSearch = (keyword: string) => {
+        setSearchParams({ search: keyword, limit: String(limit), page: '1' });
     };
 
-    // Update brand status
+    const handlePageLengthChange = (newLimit: number) => {
+        setSearchParams({ search, limit: String(newLimit), page: '1' });
+    };
+
+    const handlePageChange = (newPage: number) => {
+        setSearchParams({ search, limit: String(limit), page: String(newPage) });
+    };
+
     const updateStatus = async (brandToUpdate: Brand): Promise<void> => {
         try {
             const updatedBrand = { ...brandToUpdate, status: !brandToUpdate.status };
@@ -106,14 +127,13 @@ const BrandList: FC = () => {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             toast.success('Status updated successfully');
-            fetchBrands();
+            fetchBrands(search, limit, page); // Refetch current page
         } catch (error) {
             console.error('Failed to update status:', error);
             toast.error("Failed to update status.");
         }
     };
 
-    // Handle image selection for the form
     const handleImageChange = (e: ChangeEvent<HTMLInputElement>): void => {
         const file = e.target.files?.[0];
         if (file && file.size <= 5 * 1024 * 1024) {
@@ -127,7 +147,6 @@ const BrandList: FC = () => {
         }
     };
 
-    // Prepare form for editing an existing brand
     const handleEditClick = async (brandToEdit: Brand): Promise<void> => {
         try {
             const response = await axios.get<Brand>(`${Constants.GET_BRAND_URL}/${brandToEdit._id}`, {
@@ -144,7 +163,6 @@ const BrandList: FC = () => {
         }
     }
 
-    // Handle form submission for creating or updating a brand
     const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
         e.preventDefault();
         setFormErrors({});
@@ -168,7 +186,7 @@ const BrandList: FC = () => {
 
             toast.success(`Brand ${isEditMode ? 'updated' : 'added'} successfully`);
             setShowModal(false);
-            fetchBrands();
+            fetchBrands(search, limit, page); // Refetch current page
         } catch (error: any) {
             if (error.response?.data?.errors) {
                 setFormErrors(error.response.data.errors);
@@ -179,14 +197,12 @@ const BrandList: FC = () => {
         }
     }
 
-    // Prepare for deletion
     const handleDeleteClick = (brandToDelete: Brand): void => {
         setItemToDelete(brandToDelete);
         setDeleteModalOpen(true);
         setActiveDropdownIndex(null);
     }
 
-    // Confirm and execute deletion
     const confirmDelete = async (): Promise<void> => {
         if (!itemToDelete) return;
         try {
@@ -194,13 +210,17 @@ const BrandList: FC = () => {
                 headers: { Authorization: `Bearer ${token}` },
             });
             toast.success('Brand deleted successfully');
-            fetchBrands();
+            fetchBrands(search, limit, page); // Refetch current page
             setDeleteModalOpen(false);
         } catch (error) {
             console.error('Failed to delete brand:', error);
             toast.error("Failed to delete brand.");
         }
     }
+    
+    // Calculate display range for pagination
+    const from = (pagination.page - 1) * pagination.limit + 1;
+    const to = Math.min(pagination.page * pagination.limit, pagination.total);
 
     return (
         <div className="p-6 space-y-6">
@@ -224,12 +244,12 @@ const BrandList: FC = () => {
                     type="text"
                     placeholder="Search by brand name..."
                     value={search}
-                    onChange={(e: ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => handleSearch(e.target.value)}
                     className="border border-gray-300 rounded-md px-4 py-2 w-full md:w-64 dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-transparent"
                 />
                 <select
-                    value={perPage}
-                    onChange={(e: ChangeEvent<HTMLSelectElement>) => setPerPage(Number(e.target.value))}
+                    value={limit}
+                    onChange={(e: ChangeEvent<HTMLSelectElement>) => handlePageLengthChange(Number(e.target.value))}
                     className="border border-gray-300 px-3 py-2 rounded-md bg-white dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-transparent"
                 >
                     {[10, 25, 50].map((num) => (
@@ -239,12 +259,10 @@ const BrandList: FC = () => {
             </div>
 
             <Table headers={["#", "Brand Name", "Status", "Actions"]}>
-                {currentBrands.length === 0 ? (
-                    <tr><td colSpan={4} className="text-center py-4 text-gray-500">No brands found</td></tr>
-                ) : (
-                    currentBrands.map((brandItem, index) => (
-                        <tr key={brandItem._id} ref={ref => dropdownRef.current[indexOfFirst + index] = ref} className="border-t border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
-                            <td className="px-4 py-1">{indexOfFirst + index + 1}</td>
+                {brands.length > 0 ? (
+                    brands.map((brandItem, index) => (
+                        <tr key={brandItem._id} ref={ref => dropdownRef.current[index] = ref} className="border-t border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+                            <td className="px-4 py-1">{(page - 1) * limit + index + 1}</td>
                             <td className="font-semibold text-gray-600 dark:text-gray-300 px-4 py-1">
                                 <div className="flex items-center space-x-3">
                                     <img
@@ -271,12 +289,12 @@ const BrandList: FC = () => {
                             <td className="px-4 py-1">
                                 <div className="relative inline-block text-left">
                                     <button
-                                        onClick={() => setActiveDropdownIndex(activeDropdownIndex === (indexOfFirst + index) ? null : (indexOfFirst + index))}
+                                        onClick={() => setActiveDropdownIndex(activeDropdownIndex === index ? null : index)}
                                         className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none"
                                     >
                                         <MoreVertical size={18} className="text-gray-600 dark:text-gray-300" />
                                     </button>
-                                    {activeDropdownIndex === (indexOfFirst + index) && (
+                                    {activeDropdownIndex === index && (
                                         <div className="absolute right-0 mt-2 w-32 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg">
                                             <button
                                                 onClick={() => handleEditClick(brandItem)}
@@ -296,10 +314,22 @@ const BrandList: FC = () => {
                             </td>
                         </tr>
                     ))
+                ) : (
+                    <tr><td colSpan={4} className="text-center py-4 text-gray-500 font-semibold">No Brands Found</td></tr>
                 )}
             </Table>
             
-            {/* Pagination controls... */}
+            <PaginationWrapper
+                count={pagination.totalPages}
+                page={page}
+                from={from}
+                to={to}
+                total={pagination.total}
+                onChange={(e, newPage) => handlePageChange(newPage)}
+                paginationVariant="outlined"
+                paginationShape="rounded"
+            />
+            
             <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={isEditMode ? 'Edit Brand' : 'Add New Brand'}>
                 <form onSubmit={handleSubmit} className="space-y-6">
                     <div>

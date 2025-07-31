@@ -1,6 +1,6 @@
 import React, { useEffect, useState, type FC } from "react";
 import Modal from "../../../components/admin/Modal";
-import { Edit, Image, Trash2Icon, X } from "lucide-react";
+import { CirclePlusIcon, Edit, Image, Trash2Icon, X } from "lucide-react";
 import RowRadioButtonsGroup from "../../../components/admin/RowRadioButtonsGroup";
 import Constants from "../../../constants/api";
 import axios, { AxiosError } from "axios";
@@ -11,6 +11,7 @@ import Table from "../../../components/admin/Tabls";
 import TableRow from "../../../components/admin/TableRow";
 import { useSearchParams } from "react-router-dom";
 import Pagination from "@mui/material/Pagination";
+import PaginationWrapper from "../../../components/admin/PaginationWrapper";
 
 interface SupplierFormData {
     id?: string;
@@ -272,8 +273,8 @@ const SupplierList: FC = () => {
                         setIsEditMode(false);
                         setShowDeleteModal(false);
                     }}
-                    className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md shadow cursor-pointer">
-                    + New Supplier
+                    className="bg-purple-600 hover:bg-purple-700 text-white px-2 py-1 rounded-md shadow cursor-pointer flex items-center gap-2">
+                    <CirclePlusIcon size={14} /> New Supplier
                 </button>
             </div>
             {/* Search Input & PageLength */}
@@ -302,7 +303,7 @@ const SupplierList: FC = () => {
                         index={index + 1}
                         row={supplier}
                         columns={[
-                           <div className="flex items-center">
+                            <div className="flex items-center">
                                 <img
                                     src={supplier.profileImage}
                                     alt={supplier.supplier_name}
@@ -327,16 +328,16 @@ const SupplierList: FC = () => {
                 )}
             </Table>
 
-            
-            <div className="flex justify-between items-center">
-                <p className="text-gray-800 dark:text-white">Showing {from} to {to} of {pagination.total} entries</p>
-                <Pagination
-                    count={pagination.totalPages}
-                    page={pagination.page}
-                    onChange={(e, page) => handlePageChange(page)}
-                />
-            </div>
-
+            <PaginationWrapper
+                count={pagination.totalPages}
+                page={page}
+                from={from}
+                to={to}
+                total={pagination.total}
+                onChange={(e, newPage) => handlePageChange(newPage)}
+                paginationVariant="outlined"
+                paginationShape="rounded"
+            />
             <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={isEditMode ? 'Update Supplier' : 'Create Supplier'}>
                 <form onSubmit={handleSubmit} className="space-y-6">
                     <div className="flex items-start gap-4 mb-4">

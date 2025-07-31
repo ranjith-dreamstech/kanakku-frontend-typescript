@@ -46,7 +46,23 @@ const Constants = {
   CREATE_SUPPLIER_URL: `${API_BASE_URL}/admin/suppliers`,
   GET_SUPPLIERS_URL: `${API_BASE_URL}/admin/suppliers`,
   UPDATE_SUPPLIER_URL: `${API_BASE_URL}/admin/suppliers`,
-  DELETE_SUPPLIER_URL: `${API_BASE_URL}/admin/suppliers`
+  DELETE_SUPPLIER_URL: `${API_BASE_URL}/admin/suppliers`,
+  GET_SIGNATURES_URL: `${API_BASE_URL}/admin/signatures`,
+  CREATE_SIGNATURE_URL: `${API_BASE_URL}/admin/signatures`,
+  UPDATE_SIGNATURE_URL: `${API_BASE_URL}/admin/signatures`,
+  DELETE_SIGNATURE_URL: `${API_BASE_URL}/admin/signatures`,
+  UPDATE_SIGNATURE_STATUS_URL: `${API_BASE_URL}/admin/signatures/status`,
+  UPDATE_SIGNATURE_DEFAULT_URL: `${API_BASE_URL}/admin/signatures/set-default`,
+  GET_BANK_ACCOUNTS_URL: `${API_BASE_URL}/admin/bank-accounts`,
+  CREATE_BANK_ACCOUNT_URL: `${API_BASE_URL}/admin/bank-accounts`,
+  UPDATE_BANK_ACCOUNT_URL: `${API_BASE_URL}/admin/bank-accounts`,
+  DELETE_BANK_ACCOUNT_URL: `${API_BASE_URL}/admin/bank-accounts`,
+  UPDATE_BANK_ACCOUNT_STATUS_URL: `${API_BASE_URL}/admin/bank-accounts/status`,
+  UPDATE_COMPANY_SETTINGS_URL: `${API_BASE_URL}/admin/company-details`,
+  FETCH_COMPANY_SETTINGS_URL: `${API_BASE_URL}/admin/company-details`,
+  FETCH_COUNTRY_URL: `${API_BASE_URL}/admin/country`,
+  FETCH_STATE_URL: `${API_BASE_URL}/admin/state`,
+  FETCH_CITY_URL: `${API_BASE_URL}/admin/city`,
 };
 
 export default Constants;

@@ -12,7 +12,7 @@ const AdminHeader = ({ toggleSidebar }: HeaderProps) => {
     const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
     const { user } = useSelector((state: RootState) => state.auth);
     return (
-        <header className="flex items-center justify-between px-6 py-3 bg-white border-b shadow-sm z-10">
+        <header className="flex items-center justify-between px-6 py-2 bg-white-500 shadow z-10">
             <div className="flex items-center">
                 <button onClick={toggleSidebar} className="text-gray-500 focus:outline-none cursor-pointer">
                     <Menu className="w-6 h-6" />
