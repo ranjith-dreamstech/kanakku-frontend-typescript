@@ -63,6 +63,9 @@ const Constants = {
   FETCH_COUNTRY_URL: `${API_BASE_URL}/admin/country`,
   FETCH_STATE_URL: `${API_BASE_URL}/admin/state`,
   FETCH_CITY_URL: `${API_BASE_URL}/admin/city`,
+  FETCH_USERS_URL: `${API_BASE_URL}/admin/user/type`,
+  FETCH_USER_BY_ID_URL: `${API_BASE_URL}/admin/user`,
+  FETCH_PRODUCTS_WITH_SEARCH_URL: `${API_BASE_URL}/admin/productsrecent`
 };
 
 export default Constants;

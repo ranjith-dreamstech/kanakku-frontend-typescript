@@ -6,11 +6,12 @@ type OptionType = {
 };
 
 interface SearchableDropdownProps {
-    label: string;
+    label?: string | null;
     value: OptionType | null;
     options: OptionType[];
-    onInputChange: (event: SyntheticEvent, value: string) => void;
-    onChange: (event: SyntheticEvent, value: OptionType | null) => void;
+    inputValue?: string;
+    onInputChange?: (event: SyntheticEvent, value: string) => void;
+    onChange?: (event: SyntheticEvent, value: OptionType | null) => void;
     disabled?: boolean;
     required?: boolean;
     placeholder?: string;
@@ -21,6 +22,7 @@ const SearchableDropdown = ({
     label,
     value,
     options,
+    inputValue,
     onInputChange,
     onChange,
     disabled = false,
@@ -37,6 +39,7 @@ const SearchableDropdown = ({
                 disablePortal
                 options={options}
                 value={value}
+                inputValue={inputValue}
                 onInputChange={onInputChange}
                 onChange={onChange}
                 getOptionLabel={(option) => option.name}
