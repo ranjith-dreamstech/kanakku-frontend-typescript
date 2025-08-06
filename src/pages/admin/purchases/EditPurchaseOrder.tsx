@@ -11,7 +11,8 @@ import Modal from '../../../components/admin/Modal';
 import SignatureCanvas from 'react-signature-canvas';
 import { toWords } from 'number-to-words';
 import { toast } from 'react-toastify';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
+import { set } from 'date-fns';
 
 // --- INTERFACES ---
 
@@ -21,6 +22,7 @@ interface User {
 }
 
 interface PurchaseFormData {
+    _id: string;
     userId: string;
     billFrom: string;
     billTo: string;
@@ -124,8 +126,9 @@ interface IBankAccount {
     name: string;
 }
 
-const CreatePurchaseOrder: React.FC = () => {
+const EditPurchaseOrder: React.FC = () => {
     const navigate = useNavigate();
+    const purchaseOrderId = useParams().id || '';
     const { token, user } = useSelector((state: RootState) => state.auth);
     const [adminUsers, setAdminUsers] = useState<User[]>([]);
     const [suppliers, setSuppliers] = useState<User[]>([]);
@@ -140,6 +143,7 @@ const CreatePurchaseOrder: React.FC = () => {
     const [supplierDetails, setSupplierDetails] = useState<selectedSupplier | null>(null);
 
     const [purchaseFormData, setPurchaseFormData] = useState<PurchaseFormData>({
+        _id: '',
         userId: user?.id || '',
         billFrom: '',
         billTo: '',
@@ -171,6 +175,7 @@ const CreatePurchaseOrder: React.FC = () => {
     const [manualSignatures, setManualSignatures] = useState<IManualSignature[]>([]);
     const [isSignatureModalOpen, setSignatureModalOpen] = useState(false);
     const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
+    const [isLoading, setIsLoading] = useState(false);
     const sigPadRef = useRef<SignatureCanvas>(null);
 
     useEffect(() => {
@@ -179,7 +184,69 @@ const CreatePurchaseOrder: React.FC = () => {
         fetchTaxes();
         fetchBankAccounts();
         fetchManualSignatures();
+        if(purchaseOrderId){
+            fetchPurchaseOrder();
+        }
     }, []);
+
+    const fetchPurchaseOrder = async () => {
+    setIsLoading(true);
+
+    try {
+        const response = await axios.get(`${Constants.FETCH_PURCHASE_ORDER_URL}/${purchaseOrderId}`, {
+            headers: { 'Authorization': `Bearer ${token}` },
+        });
+
+        const data = response.data.data;
+
+        if (data) {
+            if (data.billTo) {
+                setSelectedSupplier({
+                    id: data.billTo.id,
+                    name: data.billTo.name,
+                });
+            }
+
+            if (data.billFrom) {
+                setSelectedAdmin({
+                    id: data.billFrom.id,
+                    name: data.billFrom.name,
+                });
+            }
+
+            if (data.bank) {
+                setBankAccounts((prev) => {
+                    const exists = prev.find(bank => bank.id === data.bank.id);
+                    if (exists) return prev;
+                    return [...prev, { id: data.bank.id, name: data.bank.bankName }];
+                });
+            }
+
+            setPurchaseFormData(prev => ({
+                ...prev,
+                _id: data.id,
+                userId: user?.id || '',
+                billFrom: data.billFrom?.id || '',
+                billTo: data.billTo?.id || '',
+                referenceNo: data.referenceNo || '',
+                orderDate: data.purchaseOrderDate ? new Date(data.purchaseOrderDate) : null,
+                status: data.status || '',
+                items: data.items || [],
+                notes: data.notes || '',
+                termsAndCondition: data.termsAndCondition || '',
+                bank: data.bank?.id || null,
+                sign_type: data.sign_type || 'digitalSignature',
+                signatureId: data.signature?.id || null,
+                signatureName: data.signature?.name || '',
+                esignDataUrl: data.signature?.image || null
+            }));
+        }
+    } catch (error) {
+        console.error('Error fetching purchase order:', error);
+    } finally {
+        setIsLoading(false);
+    }
+};
 
     const fetchTaxes = async () => {
         if (!token) return;
@@ -457,7 +524,6 @@ const CreatePurchaseOrder: React.FC = () => {
     const validatePurchaseOrderData = () => {
         // Add your validation logic here
         const newErrors: { [key: string]: string } = {};
-        // if (!purchaseFormData.poId.trim()) newErrors.poId = 'Order ID is required.';
         //reference number required
         if (!purchaseFormData.referenceNo.trim()) newErrors.referenceNo = 'Reference number is required.';
         //order date required
@@ -476,8 +542,6 @@ const CreatePurchaseOrder: React.FC = () => {
         if (purchaseFormData.sign_type === 'eSignature' && !purchaseFormData.signatureName.trim()) newErrors.signatureName = 'Esignature name is required.';
         if(purchaseFormData.sign_type === 'eSignature' && !purchaseFormData.esignDataUrl) newErrors.esignDataUrl = 'Esignature is required.';
         setFormErrors(newErrors);
-        console.log("formErrors", formErrors);
-        console.log("purchaseFormData", purchaseFormData);
         return newErrors;
     }
     const savePurchaseOrder = async (e: React.FormEvent) => {
@@ -517,14 +581,14 @@ const CreatePurchaseOrder: React.FC = () => {
         });
 
         try {
-            await axios.post(Constants.CREATE_PURCHASE_ORDER_URL, formData, {
+            await axios.put(`${Constants.UPDATE_PURCHASE_ORDER_URL}/${purchaseFormData._id}`, formData, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                     'Content-Type': 'multipart/form-data',
                 },
             });
 
-            toast.success('Purchase order saved successfully.');
+            toast.success('Purchase order updated successfully.');
             navigate('/admin/purchase-orders');
         } catch (error: any) {
             if (error.response?.status !== 200 && error.response?.data?.errors) {
@@ -549,7 +613,9 @@ const CreatePurchaseOrder: React.FC = () => {
 
         return new File([u8arr], filename, { type: mime });
     };
-
+    console.log('formdata ',purchaseFormData);
+    
+    if(isLoading) return <div>Loading...</div>;
     return (
         <div className="p-4 md:p-6 bg-white-50 dark:bg-gray-50 dark:bg-gray-900 min-h-screen border border-gray-200 dark:border-gray-700 rounded">
             <form onSubmit={savePurchaseOrder}>
@@ -570,7 +636,7 @@ const CreatePurchaseOrder: React.FC = () => {
                             <input
                                 type="text"
                                 id="po-id"
-                                value="PO-00098"
+                                value="PO-0001"
                                 readOnly
                                 className="border border-gray-300 rounded-md px-4 py-1 w-full dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-600"
                             />
@@ -583,6 +649,7 @@ const CreatePurchaseOrder: React.FC = () => {
                                 type="text"
                                 id="ref-no"
                                 placeholder="Enter Reference Number"
+                                value={purchaseFormData.referenceNo}
                                 name='referenceNo'
                                 onChange={(e) => handleFormChange('referenceNo', e.target.value)}
                                 className="border border-gray-300 rounded-md px-4 py-2 w-full dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-600"
@@ -606,6 +673,7 @@ const CreatePurchaseOrder: React.FC = () => {
                             <select
                                 name="status"
                                 onChange={(e) => handleFormChange('status', e.target.value)}
+                                value={purchaseFormData.status}
                                 className="border border-gray-300 rounded-md px-4 py-2 w-full dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-600"
                             >
                                 <option>Select</option>
@@ -925,8 +993,8 @@ const CreatePurchaseOrder: React.FC = () => {
                     <p className="text-sm text-gray-500 dark:text-gray-400 capitalize">{totalInWords}</p>
 
                     <div className="flex items-center gap-4 pt-4">
-                        <div className="flex items-center"><input id="manual-sig" type="radio" name="signature" checked={purchaseFormData.sign_type === 'digitalSignature'} onChange={() => handleFormChange('sign_type', 'digitalSignature')} className="h-4 w-4 text-purple-600 cursor-pointer" /><label htmlFor="manual-sig" className="ml-2 block text-sm text-gray-700 dark:text-gray-300 cursor-pointer">Manual Signature</label></div>
-                        <div className="flex items-center"><input id="e-sig" type="radio" name="signature" checked={purchaseFormData.sign_type === 'eSignature'} onChange={() => handleFormChange('sign_type', 'eSignature')} className="h-4 w-4 text-purple-600 cursor-pointer" /><label htmlFor="e-sig" className="ml-2 block text-sm text-gray-700 dark:text-gray-300 cursor-pointer">eSignature</label></div>
+                        <div className="flex items-center"><input id="manual-sig" type="radio" name="signature" checked={purchaseFormData.sign_type === 'digitalSignature'} onChange={() => {handleFormChange('sign_type', 'digitalSignature'),handleFormChange('esignDataUrl', null)}} className="h-4 w-4 text-purple-600 cursor-pointer" /><label htmlFor="manual-sig" className="ml-2 block text-sm text-gray-700 dark:text-gray-300 cursor-pointer">Manual Signature</label></div>
+                        <div className="flex items-center"><input id="e-sig" type="radio" name="signature" checked={purchaseFormData.sign_type === 'eSignature'} onChange={() => {handleFormChange('sign_type', 'eSignature'),handleFormChange('esignDataUrl', null)}} className="h-4 w-4 text-purple-600 cursor-pointer" /><label htmlFor="e-sig" className="ml-2 block text-sm text-gray-700 dark:text-gray-300 cursor-pointer">eSignature</label></div>
                     </div>
 
                     {purchaseFormData.sign_type === 'digitalSignature' ? (
@@ -982,4 +1050,4 @@ const CreatePurchaseOrder: React.FC = () => {
     );
 };
 
-export default CreatePurchaseOrder;
+export default EditPurchaseOrder;

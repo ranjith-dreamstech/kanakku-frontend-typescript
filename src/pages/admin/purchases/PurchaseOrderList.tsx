@@ -11,7 +11,6 @@ import Modal from "../../../components/admin/Modal";
 import { toast } from "react-toastify";
 import PaginationWrapper from "../../../components/admin/PaginationWrapper";
 
-// Define a type for a single Purchase Order for better type safety
 interface PurchaseOrder {
     id: string;
     purchaseOrderId: string;
@@ -29,7 +28,6 @@ interface PurchaseOrder {
     status: string;
 }
 
-// Define a type for the pagination data returned from the API
 interface PaginationData {
     total: number;
     page: number;
@@ -81,7 +79,7 @@ const PurchaseOrderList: FC = () => {
     const fetchPurchaseOrders = async (search?: string, limit?: number, page?: number) => {
         try {
             const response = await axios.get(Constants.FETCH_PURCHASE_ORDERS_URL, {
-                params: { search, limit, page }, // Pass pagination params to the API
+                params: { search, limit, page }, 
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             setPurchaseOrders(response.data.data.purchaseOrders ?? []);
@@ -93,7 +91,7 @@ const PurchaseOrderList: FC = () => {
     };
 
     const handleEditClick = (item: PurchaseOrder) => {
-        navigate(`/admin/purchase-orders/${item.id}`);
+        navigate(`/admin/purchase-orders/edit/${item.id}`);
     };
 
     const handleDeleteClick = (item: PurchaseOrder) => {
@@ -108,7 +106,7 @@ const PurchaseOrderList: FC = () => {
                 headers: { Authorization: `Bearer ${token}` }
             });
             toast.success('Purchase order deleted successfully');
-            fetchPurchaseOrders(search, limit, page); // Refetch data after delete
+            fetchPurchaseOrders(search, limit, page); 
             setShowDeleteModal(false);
             setItemToDelete(null);
         } catch (error) {
@@ -117,7 +115,6 @@ const PurchaseOrderList: FC = () => {
         }
     };
 
-    // Define table actions
     const tableActions = [
         {
             label: 'Edit',
@@ -186,7 +183,7 @@ const PurchaseOrderList: FC = () => {
                                     <p className="text-gray-500 text-xs font-semibold">{purchaseOrder.billTo?.email}</p>
                                 </div>
                             </div>,
-                            '₹'+purchaseOrder.TotalAmount,
+                            '₹' + purchaseOrder.TotalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
                             purchaseOrder.payment_mode,
                             purchaseOrder.status,
                         ]}

@@ -71,7 +71,9 @@ const Constants = {
   FETCH_SIGNATURES_WITH_SEARCH_URL: `${API_BASE_URL}/admin/signaturesrecent`,
   CREATE_PURCHASE_ORDER_URL: `${API_BASE_URL}/admin/purchase-order`,
   FETCH_PURCHASE_ORDERS_URL: `${API_BASE_URL}/admin/purchase-orders`,
-  DELETE_PURCHASE_ORDER_URL: `${API_BASE_URL}/admin/purchase-order`,
+  DELETE_PURCHASE_ORDER_URL: `${API_BASE_URL}/admin/purchase-orders`,
+  FETCH_PURCHASE_ORDER_URL: `${API_BASE_URL}/admin/purchase-orders`,
+  UPDATE_PURCHASE_ORDER_URL: `${API_BASE_URL}/admin/purchase-orders`,
 };
 
 export default Constants;

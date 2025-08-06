@@ -18,6 +18,7 @@ import PurchaseOrderList from "../pages/admin/purchases/PurchaseOrderList";
 import CreatePurchaseOrder from "../pages/admin/purchases/CreatePurchaseOrder";
 import BankAccountList from "../pages/admin/settings/financeSettings/BankAccountList";
 import CompanySettings from "../pages/admin/settings/websiteSettings/CompanySettings";
+import EditPurchaseOrder from "../pages/admin/purchases/EditPurchaseOrder";
 
 const AdminRoute = () => {
     return (
@@ -53,6 +54,7 @@ const AdminRoute = () => {
                     {/* Purchase Module Routes */}
                     <Route path="/purchase-orders" element={<PurchaseOrderList />} />
                     <Route path="/purchase-orders/new" element={<CreatePurchaseOrder />} />
+                    <Route path="/purchase-orders/edit/:id" element={<EditPurchaseOrder />} />
                     <Route path="/suppliers" element={<SupplierList />} />
                 </Route>
             </Route>
