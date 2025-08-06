@@ -1,9 +1,9 @@
 import { LogOut, User, Menu, Plus, UserCircle } from 'lucide-react';
 import { useState } from 'react';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
 import type { RootState } from '../../../store';
-
+import { logout } from '../../../store/auth/authSlice';
 interface HeaderProps {
     toggleSidebar: () => void;
 }
@@ -11,6 +11,12 @@ interface HeaderProps {
 const AdminHeader = ({ toggleSidebar }: HeaderProps) => {
     const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
     const { user } = useSelector((state: RootState) => state.auth);
+
+    const dispatch = useDispatch();
+
+    const handleLogout = () => {
+        dispatch(logout());
+    }
     return (
         <header className="flex items-center justify-between px-6 py-2 bg-white-500 shadow z-10">
             <div className="flex items-center">
@@ -62,6 +68,7 @@ const AdminHeader = ({ toggleSidebar }: HeaderProps) => {
                                 </Link>
 
                                 <button
+                                    onClick={handleLogout}
                                     className="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-red-50 hover:text-red-700 rounded-md mx-2 transition-colors duration-200"
                                     role="menuitem"
                                 >

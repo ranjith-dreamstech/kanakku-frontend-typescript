@@ -1,13 +1,19 @@
-import type React from 'react';
-import { PlusCircle, Calendar, ChevronDown, Edit, Trash2 } from 'lucide-react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
+import { PlusCircle, Edit, Trash2, Edit3 } from 'lucide-react';
 import DateInput from '../../../components/admin/DateInput';
-import { useEffect, useState } from 'react';
 import axios from 'axios';
 import Constants from '../../../constants/api';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../../store';
 import SearchableDropdown from '../../../components/admin/SearchableDropdown';
 import { useDebounce } from '../../../hooks/useDebounce';
+import Modal from '../../../components/admin/Modal';
+import SignatureCanvas from 'react-signature-canvas';
+import { toWords } from 'number-to-words';
+import { toast } from 'react-toastify';
+import { useNavigate } from 'react-router-dom';
+
+// --- INTERFACES ---
 
 interface User {
     id: string;
@@ -15,26 +21,33 @@ interface User {
 }
 
 interface PurchaseFormData {
+    userId: string;
     billFrom: string;
     billTo: string;
+    referenceNo: string;
+    orderDate: Date | null;
+    status: string;
     items: productItem[];
+    notes: string;
+    termsAndCondition: string;
+    bankAccountId: string | null;
+    sign_type: 'digitalSignature' | 'eSignature';
+    signatureId: string | null;
+    signatureName: string;
+    esignDataUrl: string | null;
 }
 
-const initialFormData: PurchaseFormData = {
-    billFrom: '',
-    billTo: '',
-    items: []
-}
 interface selectedAdmin {
     companyName: string;
     email: string;
     phone: string;
     address: string;
-    city: string | null;
-    state: string | null;
-    country: string | null;
+    city?: { id: string; name: string; };
+    state?: { id: string; name: string; };
+    country?: { id: string; name: string; };
     pincode: string;
     siteLogo: File | null;
+    logoUrl?: string;
     favicon: File | null;
     companyLogo: File | null;
     fax: string;
@@ -62,29 +75,10 @@ interface Product {
     item_type: string;
     name: string;
     code: string;
-    unit: {
-        id: string;
-        name: string;
-    } | null;
-    prices: {
-        selling: number;
-        purchase: number;
-    },
-    discount: {
-        type: 'Fixed' | 'Percentage';
-        value: number;
-    } | null;
-    tax: {
-        group_id: string;
-        group_name: string;
-        total_rate: number;
-        components: {
-            rate_id: string;
-            name: string;
-            rate: number;
-            status: boolean;
-        }[],
-    } | null;
+    unit: { id: string; name: string; } | null;
+    prices: { selling: number; purchase: number; };
+    discount: { type: 'Fixed' | 'Percentage'; value: number; } | null;
+    tax: { group_id: string; group_name: string; total_rate: number; } | null;
     quantity: number;
     rate: number;
     amount: number;
@@ -99,80 +93,184 @@ interface productItem {
     discount: number;
     tax: number;
     amount: number;
+    tax_group_id?: string;
+    discount_type?: 'Fixed' | 'Percentage';
+    discount_value?: number;
 }
+
+interface taxGroup {
+    _id: string;
+    tax_name: string;
+    total_tax_rate: number;
+    tax_rates: {
+        _id: string;
+        tax_name: string;
+        tax_rate: number;
+    }[];
+}
+
+interface IManualSignature {
+    id: string;
+    name: string;
+    imageUrl: string;
+}
+
+interface IBankAccount {
+    id: string;
+    name: string;
+}
+
 const CreatePurchaseOrder: React.FC = () => {
-    // Dropdown options state
+    const navigate = useNavigate();
+    const { token, user } = useSelector((state: RootState) => state.auth);
     const [adminUsers, setAdminUsers] = useState<User[]>([]);
     const [suppliers, setSuppliers] = useState<User[]>([]);
-    
     const [products, setProducts] = useState<Product[]>([]);
     const [productSearchInput, setProductSearchInput] = useState<string>('');
     const [isProductLoading, setIsProductLoading] = useState<boolean>(false);
-    const [PurchaseFormData, setPurchaseFormData] = useState<PurchaseFormData>(initialFormData);
-    // Use the debounce hook to delay API calls
-    const debouncedSearchTerm = useDebounce(productSearchInput, 500); // 500ms delay
+    const debouncedSearchTerm = useDebounce(productSearchInput, 500);
 
-    // Selected items state
-    const [selectedItems, setSelectedItems] = useState<productItem[]>([]);
-    
-    // Selected admin/supplier state
     const [selectedAdmin, setSelectedAdmin] = useState<User | null>(null);
     const [selectedSupplier, setSelectedSupplier] = useState<User | null>(null);
     const [companyDetails, setCompanyDetails] = useState<selectedAdmin | null>(null);
     const [supplierDetails, setSupplierDetails] = useState<selectedSupplier | null>(null);
 
-    const { token } = useSelector((state: RootState) => state.auth);
+    const [purchaseFormData, setPurchaseFormData] = useState<PurchaseFormData>({
+        userId: user?.id || '',
+        billFrom: '',
+        billTo: '',
+        referenceNo: '',
+        orderDate: null,
+        status: '',
+        items: [],
+        notes: '',
+        termsAndCondition: '',
+        bankAccountId: null,
+        sign_type: 'digitalSignature',
+        signatureId: null,
+        signatureName: '',
+        esignDataUrl: null,
+    });
+
+    // Edit Modal State
+    const [isEditProductModalOpen, setIsEditProductModalOpen] = useState(false);
+    const [editingItem, setEditingItem] = useState<productItem | null>(null);
+    const [taxes, setTaxes] = useState<taxGroup[]>([]);
+
+    // Extra Information State
+    const [activeInfoTab, setActiveInfoTab] = useState<'notes' | 'termsAndCondition' | 'bank'>('notes');
+    const [bankAccounts, setBankAccounts] = useState<IBankAccount[]>([]);
+    const [manualSignatures, setManualSignatures] = useState<IManualSignature[]>([]);
+    const [isSignatureModalOpen, setSignatureModalOpen] = useState(false);
+    const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
+    const sigPadRef = useRef<SignatureCanvas>(null);
 
     useEffect(() => {
         fetchAdminUsers();
         fetchSuppliers();
+        fetchTaxes();
+        fetchBankAccounts();
+        fetchManualSignatures();
     }, []);
 
-    // Function to handle admin user selection
+    const fetchTaxes = async () => {
+        if (!token) return;
+        try {
+            const response = await axios.get(Constants.FETCH_TAX_GROUPS_URL, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            setTaxes(response.data.data);
+        } catch (error) {
+            console.error('Error fetching taxes:', error);
+            setTaxes([]);
+        }
+    };
+
+    const fetchBankAccounts = async () => {
+        try {
+            const response = await axios.get(Constants.FETCH_BANK_ACCOUNTS_WITH_SEARCH_URL, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (response.data.data.length > 0) {
+                const formattedBankAccounts = response.data.data.map((item: any) => {
+                    return {
+                        id: item.id,
+                        name: item.bankName
+                    }
+                });
+
+                setBankAccounts(formattedBankAccounts);
+            } else {
+                setBankAccounts([]);
+            }
+        } catch (error) {
+            console.error("Error fetching bank accounts:", error);
+        }
+    }
+
+    const fetchManualSignatures = async () => {
+        try {
+            const response = await axios.get(Constants.FETCH_SIGNATURES_WITH_SEARCH_URL, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (response.data.data.length > 0) {
+                const formattedSignatures = response.data.data.map((item: any) => {
+                    return {
+                        id: item.id,
+                        name: item.signatureName,
+                        imageUrl: item.signatureImage
+                    }
+                });
+
+                setManualSignatures(formattedSignatures);
+            } else {
+                setManualSignatures([]);
+            }
+        } catch (error) {
+            console.error("Error fetching manual signatures:", error);
+        }
+    }
     const handleAdminChange = async (user: User) => {
         setSelectedAdmin(user);
         try {
             const response = await axios.get(`${Constants.FETCH_COMPANY_SETTINGS_URL}/${user.id}`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            })
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            //set billFrom to formData
+            setPurchaseFormData({ ...purchaseFormData, billFrom: user.id });
             setCompanyDetails(response.data.data);
         } catch (error) {
             setCompanyDetails(null);
         }
-    }
+    };
 
-    // handle supplier selection
     const handleSupplierChange = async (user: User) => {
         setSelectedSupplier(user);
         try {
             const response = await axios.get(`${Constants.FETCH_USER_BY_ID_URL}/${user.id}`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            })
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            //set billTo to formData
+            setPurchaseFormData({ ...purchaseFormData, billTo: user.id });
             setSupplierDetails(response.data.data);
         } catch (error) {
             setSupplierDetails(null);
         }
-    }
+    };
 
     useEffect(() => {
         const fetchProductsByQuery = async () => {
-            // Only search if the debounced term is not empty
             if (debouncedSearchTerm) {
                 setIsProductLoading(true);
                 try {
                     const response = await axios.get(`${Constants.FETCH_PRODUCTS_WITH_SEARCH_URL}?search=${debouncedSearchTerm}`, {
                         headers: { 'Authorization': `Bearer ${token}` }
                     });
-
                     const availableProducts = response.data.data.filter(
-                        (product: Product) => !selectedItems.some(selected => selected.id === product.id)
+                        (product: Product) => purchaseFormData.items.every((item: productItem) => item.id !== product.id)
                     );
                     setProducts(availableProducts);
-
                 } catch (error) {
                     console.error('Error fetching products:', error);
                     setProducts([]);
@@ -180,34 +278,30 @@ const CreatePurchaseOrder: React.FC = () => {
                     setIsProductLoading(false);
                 }
             } else {
-                // Clear results when the search input is empty
                 setProducts([]);
             }
         };
-
         fetchProductsByQuery();
-    }, [debouncedSearchTerm, selectedItems, token]);
+    }, [debouncedSearchTerm, token]);
 
-    /// handle product change
+    // --- ITEM & FORM HANDLERS ---
+    const handleFormChange = (field: keyof PurchaseFormData, value: any) => {
+        setPurchaseFormData(prev => ({ ...prev, [field]: value }));
+    };
+
     const handleProductChange = (product: Product) => {
-        if (!product) return; 
-
+        if (!product) return;
         let productDiscount = 0;
-        let taxRate = 0;
-        let productTax = 0;
         const sellingPrice = product.prices?.selling ?? 0;
         const discountType = product.discount?.type;
         const discountValue = product.discount?.value ?? 0;
 
-        if (discountType === "Fixed") {
-            productDiscount = discountValue;
-        } else if (discountType === "Percentage") {
-            productDiscount = (sellingPrice * discountValue) / 100;
-        }
+        if (discountType === "Fixed") productDiscount = discountValue;
+        else if (discountType === "Percentage") productDiscount = (sellingPrice * discountValue) / 100;
 
-        taxRate = product.tax?.components.reduce((acc, component) => acc + component.rate, 0) ?? 0;
-        productTax = (sellingPrice * taxRate) / 100;
-        
+        const taxRate = product.tax?.total_rate ?? 0;
+        const productTax = (sellingPrice * taxRate) / 100;
+
         const newItem: productItem = {
             id: product.id,
             name: product.name,
@@ -216,28 +310,113 @@ const CreatePurchaseOrder: React.FC = () => {
             rate: sellingPrice,
             discount: productDiscount,
             tax: productTax,
+            tax_group_id: product.tax?.group_id,
+            discount_type: discountType,
+            discount_value: discountValue,
             amount: (sellingPrice * 1) - productDiscount + productTax,
         };
-
-        setSelectedItems(prev => [...prev, newItem]);
-        setPurchaseFormData(prev => ({
-            ...prev,
-            items: [...prev.items, newItem]
-        }))
+        handleFormChange('items', [...purchaseFormData.items, newItem]);
     };
 
-    // handle remove item
     const handleRemoveItem = (itemToRemove: productItem) => {
-        setSelectedItems(prev => prev.filter(item => item.id !== itemToRemove.id));
+        handleFormChange('items', purchaseFormData.items.filter(item => item.id !== itemToRemove.id));
     };
 
-    // Function to fetch admin users
+    const handleEditItem = (itemToEdit: productItem) => {
+        setEditingItem({ ...itemToEdit });
+        setIsEditProductModalOpen(true);
+    };
+
+    const handleEditingItemChange = (field: keyof productItem, value: string | number) => {
+        setEditingItem(prev => {
+            if (!prev) return null;
+
+            const fieldsToNumber = ['qty', 'rate', 'discount_value'];
+
+            const newValue = fieldsToNumber.includes(field as string)
+                ? Number(value) || 0
+                : value;
+
+            const updatedItem = { ...prev, [field]: newValue };
+
+            const { qty, rate, discount_value, discount_type, tax_group_id } = updatedItem;
+
+            const subtotal = qty * rate;
+
+            // ✅ Row-level discount
+            const discountAmount = discount_type === 'Percentage'
+                ? (subtotal * (discount_value || 0)) / 100
+                : (discount_value || 0);
+
+            const discountedSubtotal = subtotal - discountAmount;
+
+            // ✅ Tax per unit
+            const selectedTaxGroup = taxes.find(t => String(t._id) === String(tax_group_id));
+            const taxRate = selectedTaxGroup?.total_tax_rate || 0;
+            const taxPerUnit = (rate * taxRate) / 100;
+
+            const totalTax = taxPerUnit * qty;
+
+            // ✅ Final amount
+            const newAmount = discountedSubtotal + totalTax;
+
+            return {
+                ...updatedItem,
+                discount: discountAmount,
+                tax: totalTax,
+                amount: newAmount
+            };
+        });
+    };
+
+
+
+    const handleUpdateItem = () => {
+        if (!editingItem) return;
+        const updatedItems = purchaseFormData.items.map(item =>
+            item.id === editingItem.id ? editingItem : item
+        );
+        handleFormChange('items', updatedItems);
+        setIsEditProductModalOpen(false);
+        setEditingItem(null);
+    };
+
+    // --- SIGNATURE HANDLERS ---
+    const clearSignature = () => sigPadRef.current?.clear();
+    const saveSignature = () => {
+        if (sigPadRef.current) {
+            const dataUrl = sigPadRef.current.getCanvas().toDataURL('image/png');
+            handleFormChange('esignDataUrl', dataUrl);
+            setSignatureModalOpen(false);
+        }
+    };
+
+    // --- DYNAMIC CALCULATIONS ---
+    const { subTotal, totalTax, totalDiscount, grandTotal } = useMemo(() => {
+        const totals = purchaseFormData.items.reduce((acc, item) => {
+            acc.subTotal += item.rate * item.qty;
+            acc.totalDiscount += item.discount;
+            acc.totalTax += item.tax;
+            return acc;
+        }, { subTotal: 0, totalTax: 0, totalDiscount: 0 });
+
+        return { ...totals, grandTotal: totals.subTotal - totals.totalDiscount + totals.totalTax };
+    }, [purchaseFormData.items]);
+
+    const totalInWords = useMemo(() => {
+        if (grandTotal <= 0) return 'Zero';
+        return toWords(grandTotal).replace(/,/g, '').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ') + ' Only';
+    }, [grandTotal]);
+
+    const selectedManualSignatureImage = useMemo(() => {
+        return manualSignatures.find(sig => sig.id === purchaseFormData.signatureId)?.imageUrl || null;
+    }, [purchaseFormData.signatureId, manualSignatures]);
+
+
     const fetchAdminUsers = async () => {
         try {
             const response = await axios.get(`${Constants.FETCH_USERS_URL}/1`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
+                headers: { 'Authorization': `Bearer ${token}` }
             });
             if (response.data.data.length > 0) {
                 const formattedUsers = response.data.data.map((user: any) => ({ id: user.id, name: `${user.firstName} ${user.lastName}` }));
@@ -245,18 +424,15 @@ const CreatePurchaseOrder: React.FC = () => {
             } else {
                 setAdminUsers([]);
             }
-
         } catch (error) {
             console.error('Error fetching admin users:', error);
         }
-    }
-    // Function to fetch suppliers
+    };
+
     const fetchSuppliers = async () => {
         try {
             const response = await axios.get(`${Constants.FETCH_USERS_URL}/2`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
+                headers: { 'Authorization': `Bearer ${token}` }
             });
             if (response.data.data.length > 0) {
                 const formattedSuppliers = response.data.data.map((supplier: any) => ({ id: supplier.id, name: `${supplier.firstName} ${supplier.lastName}` }));
@@ -267,18 +443,114 @@ const CreatePurchaseOrder: React.FC = () => {
         } catch (error) {
             console.error('Error fetching suppliers:', error);
         }
+    };
+
+    const validatePurchaseOrderData = () => {
+        // Add your validation logic here
+        const newErrors: { [key: string]: string } = {};
+        // if (!purchaseFormData.poId.trim()) newErrors.poId = 'Order ID is required.';
+        //reference number required
+        if (!purchaseFormData.referenceNo.trim()) newErrors.referenceNo = 'Reference number is required.';
+        //order date required
+        if (!purchaseFormData.orderDate) newErrors.orderDate = 'Order date is required.';
+        //status required
+        if (!purchaseFormData.status.trim()) newErrors.status = 'Status is required.';
+        //billFrom required
+        if (!purchaseFormData.billFrom.trim()) newErrors.billFrom = 'Bill from is required.';
+        //billTo required
+        if (!purchaseFormData.billTo.trim()) newErrors.billTo = 'Bill to is required.';
+        //atleast 1 item required
+        if (purchaseFormData.items.length === 0) newErrors.items = 'At least one item is required.';
+        //sign_type if manual then signatureId required
+        if (purchaseFormData.sign_type === 'digitalSignature' && !purchaseFormData.signatureId) newErrors.signatureId = 'Manual signature is required.';
+        //sign_type if esignature then signatureName required
+        if (purchaseFormData.sign_type === 'eSignature' && !purchaseFormData.signatureName.trim()) newErrors.signatureName = 'Esignature name is required.';
+        if(purchaseFormData.sign_type === 'eSignature' && !purchaseFormData.esignDataUrl) newErrors.esignDataUrl = 'Esignature is required.';
+        setFormErrors(newErrors);
+        console.log("formErrors", formErrors);
+        console.log("purchaseFormData", purchaseFormData);
+        return newErrors;
     }
+    const savePurchaseOrder = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        const errors = validatePurchaseOrderData();
+
+        if (Object.keys(errors).length > 0) {
+            const firstErrorField = Object.keys(errors)[0];
+            const firstErrorElement = document.querySelector(`[name="${firstErrorField}"]`) as HTMLInputElement | null;
+            firstErrorElement?.focus();
+            return;
+        }
+
+        const formData = new FormData();
+
+        Object.entries(purchaseFormData).forEach(([key, value]) => {
+            if (key === 'esignDataUrl' && purchaseFormData.sign_type === 'esignature') {
+                const file = dataURLtoFile(value, 'signature.png');
+                formData.append('signatureImage', file);
+
+            } else if (value instanceof Date) {
+                formData.append(key, value.toISOString().split('T')[0]);
+
+            } else if (Array.isArray(value) && key === 'items') {
+                value.forEach((item, index) => {
+                    Object.entries(item).forEach(([itemKey, itemValue]) => {
+                        if (itemValue !== undefined && itemValue !== null) {
+                            formData.append(`items[${index}][${itemKey}]`, String(itemValue));
+                        }
+                    });
+                });
+
+            } else if (typeof value !== 'object' && value !== undefined && value !== null) {
+                formData.append(key, String(value));
+            }
+        });
+
+        try {
+            await axios.post(Constants.CREATE_PURCHASE_ORDER_URL, formData, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    'Content-Type': 'multipart/form-data',
+                },
+            });
+
+            toast.success('Purchase order saved successfully.');
+            navigate('/admin/purchase-orders');
+        } catch (error: any) {
+            if (error.response?.status !== 200 && error.response?.data?.errors) {
+                setFormErrors(error.response.data.errors);
+            } else {
+                toast.error('An unexpected error occurred.');
+            }
+        }
+    };
+
+
+    const dataURLtoFile = (dataUrl: string, filename: string): File => {
+        const arr = dataUrl.split(',');
+        const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/png';
+        const bstr = atob(arr[1]);
+        let n = bstr.length;
+        const u8arr = new Uint8Array(n);
+
+        while (n--) {
+            u8arr[n] = bstr.charCodeAt(n);
+        }
+
+        return new File([u8arr], filename, { type: mime });
+    };
 
     return (
-        <div className="p-4 md:p-6 bg-white dark:bg-gray-50 dark:bg-gray-900 min-h-screen shadow-md">
+        <div className="p-4 md:p-6 bg-white-50 dark:bg-gray-50 dark:bg-gray-900 min-h-screen border border-gray-200 dark:border-gray-700 rounded">
+            <form onSubmit={savePurchaseOrder}>
             <div className="max-w-7xl mx-auto space-y-6">
 
                 {/* Header */}
                 <div className="flex justify-between items-center mb-6">
-                    <h1 className="text-2xl font-bold text-gray-800 dark:text-white">New Purchase Order</h1>
+                    <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Purchase Order Details</h1>
                     <img src="https://kanakku-web-new.dreamstechnologies.com/e4f01b6957284e6a7fcd.svg" alt="" />
                 </div>
-
                 {/* Top Section: PO Details & Logo */}
                 <div className="w-full">
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 w-full">
@@ -296,28 +568,35 @@ const CreatePurchaseOrder: React.FC = () => {
                         </div>
                         <div className="w-full">
                             <label htmlFor="ref-no" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                Reference No
+                                Reference No <em className='text-red-500'>*</em>
                             </label>
                             <input
                                 type="text"
                                 id="ref-no"
                                 placeholder="Enter Reference Number"
+                                name='referenceNo'
+                                onChange={(e) => handleFormChange('referenceNo', e.target.value)}
                                 className="border border-gray-300 rounded-md px-4 py-2 w-full dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-600"
                             />
+                            {formErrors?.referenceNo && <span className="text-red-500 text-sm">{formErrors.referenceNo}</span>}
                         </div>
                         <div className="w-full">
                             <DateInput
                                 label="Order Date"
-                                value={null}
-                                onChange={() => { }}
+                                value={purchaseFormData.orderDate}
+                                onChange={(newDate) => handleFormChange('orderDate', newDate)}
                                 minDate={new Date()}
+                                isRequired
                             />
+                            {formErrors?.orderDate && <span className="text-red-500 text-sm">{formErrors.orderDate}</span>}
                         </div>
                         <div className="w-full">
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                Status
+                                Status <em className='text-red-500'>*</em>
                             </label>
                             <select
+                                name="status"
+                                onChange={(e) => handleFormChange('status', e.target.value)}
                                 className="border border-gray-300 rounded-md px-4 py-2 w-full dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-600"
                             >
                                 <option>Select</option>
@@ -325,33 +604,15 @@ const CreatePurchaseOrder: React.FC = () => {
                                 <option value="pending">Pending</option>
                                 <option value="cancelled">Cancelled</option>
                             </select>
+                            {formErrors?.status && <span className="text-red-500 text-sm">{formErrors.status}</span>}
                         </div>
                     </div>
                 </div>
-
-                {/* <div className="flex flex-col md:flex-row justify-between items-start gap-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-10 w-full">
-                        <div className="flex flex-col w-full">
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                Status
-                            </label>
-                            <select
-                                className="border border-gray-300 rounded-md px-4 py-2 w-full dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-600"
-                            >
-                                <option>Select</option>
-                                <option value="new">New</option>
-                                <option value="pending">Pending</option>
-                                <option value="cancelled">Cancelled</option>
-                            </select>
-                        </div>
-                    </div>
-                </div> */}
 
                 {/* Billing Section */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
                         <h3 className="font-bold text-gray-800 dark:text-white">Bill From <span className='text-red-500'>*</span></h3>
-
                         <div className="mt-4">
                             <SearchableDropdown
                                 options={adminUsers}
@@ -359,11 +620,10 @@ const CreatePurchaseOrder: React.FC = () => {
                                 value={selectedAdmin}
                                 onChange={(e, value) => handleAdminChange(value as User)}
                             />
-
+                            {formErrors?.billFrom && <span className="text-red-500 text-sm">{formErrors.billFrom}</span>}
                             <p className="mt-2 text-xs text-gray-500 dark:text-gray-400 p-2 bg-gray-50 dark:bg-gray-700/50 rounded-md font-semibold">
                                 Select admin to view company details.
                             </p>
-
                             {selectedAdmin && companyDetails && (
                                 <div className="mt-4 flex gap-3 p-4 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-md">
                                     <div className="w-15 h-15 flex items-center justify-center rounded bg-white dark:bg-gray-800 border border-gray-200">
@@ -377,7 +637,7 @@ const CreatePurchaseOrder: React.FC = () => {
                                         <h4 className="font-semibold text-gray-900 dark:text-white uppercase">
                                             {companyDetails.companyName}
                                         </h4>
-                                        <p className="text-sm text-gray-600 dark:text-gray-300">{companyDetails.city}, {companyDetails.district}</p>
+                                        <p className="text-sm text-gray-600 dark:text-gray-300">{companyDetails.city?.name ?? ""}, {companyDetails.state?.name ?? ""}</p>
                                         <p className="text-sm text-gray-500 dark:text-gray-400">
                                             {companyDetails.address}
                                         </p>
@@ -386,7 +646,6 @@ const CreatePurchaseOrder: React.FC = () => {
                             )}
                         </div>
                     </div>
-
 
                     <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
                         <div className="flex justify-between items-center">
@@ -399,15 +658,14 @@ const CreatePurchaseOrder: React.FC = () => {
                         <div className="mt-4">
                             <SearchableDropdown
                                 options={suppliers}
-                                placeholder="Select Admin"
+                                placeholder="Select Supplier"
                                 value={selectedSupplier}
                                 onChange={(e, value) => handleSupplierChange(value as User)}
                             />
-
+                            {formErrors?.billTo && <span className="text-red-500 text-sm">{formErrors.billTo}</span>}
                             <p className="mt-2 text-xs text-gray-500 dark:text-gray-400 p-2 bg-gray-50 dark:bg-gray-700/50 rounded-md font-semibold">
                                 Select supplier to view vendor details
                             </p>
-
                             {selectedSupplier && supplierDetails && (
                                 <div className="mt-4 flex gap-3 p-4 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-md">
                                     <div className="w-15 h-15 flex items-center justify-center rounded bg-white dark:bg-gray-800 border border-gray-200">
@@ -436,17 +694,18 @@ const CreatePurchaseOrder: React.FC = () => {
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Products/Services</label>
                         <SearchableDropdown
                             options={products}
-                            placeholder="Select Product"
+                            placeholder="Search and Select Product"
                             value={null}
                             inputValue={productSearchInput}
                             onInputChange={(e, value) => setProductSearchInput(value)}
-                            onChange={(e, value) =>{
-                                handleProductChange(value as Product);
+                            onChange={(e, value) => {
+                                if (value) handleProductChange(value as Product);
                                 setProductSearchInput('');
-                            } }
+                            }}
                         />
                     </div>
-                    <div className="overflow-x-auto">
+                    <div className="p-4 overflow-x-auto">
+                        {formErrors?.items && <span className="text-red-500 text-sm">{formErrors.items}</span>}
                         <table className="w-full border-separate border-spacing-0">
                             <thead className="bg-gray-900 text-white">
                                 <tr>
@@ -461,114 +720,254 @@ const CreatePurchaseOrder: React.FC = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {PurchaseFormData.items && PurchaseFormData.items.map((item, index) => (
-                                    <tr key={item.id} className="bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 border border-t-0 border-gray-200 dark:border-gray-700 rounded-b-md">
+                                {purchaseFormData.items.map((item) => (
+                                    <tr key={item.id} className="bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700">
                                         <td className="p-3 font-medium">{item.name}</td>
-                                        <td className="p-3">{item.name}</td>
-                                        <td className="p-3">
-                                            <input
-                                                type="number"
-                                                value={1}
-                                                className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-white"
-                                            />
-                                        </td>
-                                        <td className="p-3">₹{item.rate}</td>
-                                        <td className="p-3">₹{item.discount}</td>
-                                        <td className="p-3">₹{item.tax}</td>
-                                        <td className="p-3">₹{item.amount}</td>
+                                        <td className="p-3">{item.unit}</td>
+                                        <td className="p-3">{item.qty}</td>
+                                        <td className="p-3">₹{item.rate.toFixed(2)}</td>
+                                        <td className="p-3">₹{item.discount.toFixed(2)}</td>
+                                        <td className="p-3">₹{item.tax.toFixed(2)}</td>
+                                        <td className="p-3">₹{item.amount.toFixed(2)}</td>
                                         <td className="p-3 flex gap-2 items-center justify-center md:justify-start md:gap-4">
-                                            <button>
+                                            <button type='button' onClick={() => handleEditItem(item)} aria-label="Edit item" className='cursor-pointer'>
                                                 <Edit size={16} className="text-gray-600 dark:text-white" />
                                             </button>
-                                            <button
-                                                onClick={() => handleRemoveItem(item)}
-                                                className='cursor-pointer'
-                                            >
+                                            <button type='button' onClick={() => handleRemoveItem(item)} className='cursor-pointer' aria-label="Remove item">
                                                 <Trash2 size={16} className="text-red-500" />
                                             </button>
                                         </td>
                                     </tr>
                                 ))}
-
-                                {selectedItems.length === 0 &&
-                                    <tr className="bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 border border-t-0 border-gray-200 dark:border-gray-700 rounded-b-md">
+                                {purchaseFormData.items.length === 0 && (
+                                    <tr className="bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200">
                                         <td className="p-3 font-medium text-center" colSpan={8}>
                                             No Items Selected
                                         </td>
                                     </tr>
-                                }
+                                )}
                             </tbody>
                         </table>
+                        {/* Add New Product */}
+                        <div className="p-4 flex">
+                            <button className="flex items-center text-sm text-purple-600 dark:text-purple-400 font-semibold">
+                                <PlusCircle className="h-4 w-4 mr-1" />
+                                Add New
+                            </button>
+                        </div>
                     </div>
-
                 </div>
-                <div className="p-0">
-                    <button className="flex items-center text-sm text-purple-600 dark:text-purple-400 font-semibold">
-                        <PlusCircle className="h-4 w-4 mr-1" />
-                        Add New
-                    </button>
-                </div>
-                {/* Bottom Section: Extra Info & Totals */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div>
-                        <div className="flex items-center gap-2 mb-4">
-                            <button className="px-3 py-2 text-sm font-medium text-white bg-purple-600 rounded-md">Add Notes</button>
-                            <button className="px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md">Add Terms & Conditions</button>
-                            <button className="px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md">Save Details</button>
-                        </div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Additional Notes</label>
-                        <textarea rows={3} placeholder="Enter Notes" className="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-800 dark:border-gray-600 shadow-sm"></textarea>
-                    </div>
-                    <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 space-y-3">
-                        <div className="flex justify-between text-sm text-gray-600 dark:text-gray-300">
-                            <span>Amount</span>
-                            <span>₹0.00</span>
-                        </div>
-                        <div className="flex justify-between text-sm text-gray-600 dark:text-gray-300">
-                            <span>Tax</span>
-                            <span>₹0.00</span>
-                        </div>
-                        <div className="flex justify-between text-sm text-gray-600 dark:text-gray-300">
-                            <span>Discount</span>
-                            <span>₹0.00</span>
-                        </div>
-                        <div className="flex justify-between text-sm text-gray-600 dark:text-gray-300">
-                            <span>Round Off Total</span>
-                            <span>₹0</span>
-                        </div>
-                        <hr className="border-gray-200 dark:border-gray-600" />
-                        <div className="flex justify-between font-bold text-gray-800 dark:text-white">
-                            <span>Total</span>
-                            <span>₹0.00</span>
-                        </div>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Total in Words</p>
 
-                        <div className="flex items-center gap-4 pt-4">
-                            <div className="flex items-center">
-                                <input id="manual-sig" type="radio" name="signature" className="h-4 w-4 text-purple-600 border-gray-300 focus:ring-purple-500" />
-                                <label htmlFor="manual-sig" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">Manual Signature</label>
-                            </div>
-                            <div className="flex items-center">
-                                <input id="e-sig" type="radio" name="signature" className="h-4 w-4 text-purple-600 border-gray-300 focus:ring-purple-500" />
-                                <label htmlFor="e-sig" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">eSignature</label>
-                            </div>
-                        </div>
+
+                {/* Other sections can go here */}
+
+            </div>
+
+            {/* Edit Product Modal */}
+            <Modal isOpen={isEditProductModalOpen} onClose={() => setIsEditProductModalOpen(false)} title={`Edit: ${editingItem?.name}`}>
+                {editingItem && (
+                    <div className="p-4 space-y-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Select Signature Name <span className="text-red-500">*</span></label>
-                            <select className="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm">
-                                <option>rgtgrtg</option>
+                            <label htmlFor="edit-qty" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Quantity</label>
+                            <input
+                                type="number"
+                                id="edit-qty"
+                                min="1"
+                                value={editingItem.qty}
+                                onChange={(e) => handleEditingItemChange('qty', e.target.value)}
+                                className="border border-gray-300 rounded-md px-4 py-2 w-full dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-600"
+                            />
+                        </div>
+
+                        <div>
+                            <label htmlFor="edit-rate" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Rate (₹)</label>
+                            <input
+                                type="number"
+                                id="edit-rate"
+                                min="0"
+                                value={editingItem.rate}
+                                onChange={(e) => handleEditingItemChange('rate', e.target.value)}
+                                className="border border-gray-300 rounded-md px-4 py-2 w-full dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-600"
+                            />
+                        </div>
+                        {/* Discount Type */}
+                        <div>
+                            <label htmlFor="edit-discount-type" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Discount Type</label>
+                            <select
+                                id="edit-discount-type"
+                                className="border border-gray-300 rounded-md px-4 py-2 w-full dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-600"
+                                value={editingItem.discount_type}
+                                onChange={(e) => handleEditingItemChange('discount_type', e.target.value)}
+                            >
+                                <option value="Percentage">Percentage</option>
+                                <option value="Fixed">Fixed</option>
                             </select>
                         </div>
                         <div>
-                            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Signature Image</p>
-                            <div className="mt-2 h-16 w-32 bg-gray-100 dark:bg-gray-700 rounded-md">
-                                {/* Signature image will go here */}
-                            </div>
+                            <label htmlFor="edit-discount" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Discount Amount (₹)</label>
+                            <input
+                                type="number"
+                                id="edit-discount"
+                                min="0"
+                                value={editingItem.discount_value}
+                                onChange={(e) => handleEditingItemChange('discount_value', e.target.value)}
+                                className="border border-gray-300 rounded-md px-4 py-2 w-full dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-600"
+                            />
+                        </div>
+
+                        <div>
+                            <label htmlFor="edit-tax-select" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Apply Tax Group</label>
+                            <select
+                                id="edit-tax-select"
+                                data-tax-group={editingItem.tax_group_id}
+                                className="border border-gray-300 rounded-md px-4 py-2 w-full dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-600"
+                                value={editingItem.tax_group_id || ''}
+                                onChange={(e) => {
+                                    const selectedTaxGroup = taxes.find(t => t._id === e.target.value);
+                                    if (selectedTaxGroup) {
+                                        const newTaxAmount = (editingItem.rate * selectedTaxGroup.total_tax_rate) / 100;
+                                        handleEditingItemChange('tax', newTaxAmount);
+                                        handleEditingItemChange('tax_group_id', String(selectedTaxGroup._id));
+                                    } else {
+                                        handleEditingItemChange('tax', 0);
+                                        handleEditingItemChange('tax_group_id', '');
+                                    }
+                                }}
+                            >
+                                <option value="">None</option>
+                                {taxes.map(taxGroup => (
+                                    <option key={taxGroup._id} value={taxGroup._id}>
+                                        {taxGroup.tax_name} ({taxGroup.total_tax_rate}%)
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className="pt-2">
+                            <p className="text-lg font-semibold text-gray-800 dark:text-white">
+                                New Amount: ₹{editingItem.amount.toFixed(2)}
+                            </p>
+                        </div>
+
+                        <div className="flex justify-end gap-4 pt-4">
+                            <button
+                                type="button"
+                                onClick={() => setIsEditProductModalOpen(false)}
+                                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 dark:bg-gray-600 dark:text-gray-200 dark:border-gray-500"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleUpdateItem}
+                                className="px-4 py-2 text-sm font-medium text-white bg-purple-600 border border-transparent rounded-md hover:bg-purple-700"
+                            >
+                                Update Item
+                            </button>
                         </div>
                     </div>
+                )}
+            </Modal>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+
+                {/* Left Side: Tabs */}
+                <div>
+                    <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-3">Extra Information</h3>
+                    <div className="flex items-center gap-2 mb-4">
+                        <button type='button' onClick={() => setActiveInfoTab('notes')} className={`px-4 py-2 text-sm cursor-pointer font-medium rounded-md ${activeInfoTab === 'notes' ? 'bg-purple-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}>Add Notes</button>
+                        <button type='button' onClick={() => setActiveInfoTab('termsAndCondition')} className={`px-4 py-2 text-sm cursor-pointer font-medium rounded-md ${activeInfoTab === 'termsAndCondition' ? 'bg-purple-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}>Add termsAndCondition & Conditions</button>
+                        <button type='button' onClick={() => setActiveInfoTab('bank')} className={`px-4 py-2 text-sm cursor-pointer font-medium rounded-md ${activeInfoTab === 'bank' ? 'bg-purple-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}>Bank Details</button>
+                    </div>
+
+                    {activeInfoTab === 'notes' && (
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Additional Notes</label>
+                            <textarea value={purchaseFormData.notes} onChange={(e) => handleFormChange('notes', e.target.value)} rows={4} placeholder="Enter Notes" className="border border-gray-300 rounded-md px-4 py-2 w-full dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-600"></textarea>
+                        </div>
+                    )}
+                    {activeInfoTab === 'termsAndCondition' && (
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">termsAndCondition & Conditions</label>
+                            <textarea value={purchaseFormData.termsAndCondition} onChange={(e) => handleFormChange('termsAndCondition', e.target.value)} rows={4} placeholder="Enter termsAndCondition & Conditions" className="border border-gray-300 rounded-md px-4 py-2 w-full dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-600"></textarea>
+                        </div>
+                    )}
+                    {activeInfoTab === 'bank' && (
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Account</label>
+                            <SearchableDropdown
+                                options={bankAccounts}
+                                placeholder="Select Bank Account"
+                                value={bankAccounts.find(b => b.id === purchaseFormData.bankAccountId) || null}
+                                onChange={(e, value) => handleFormChange('bankAccountId', (value as IBankAccount)?.id || null)}
+                            />
+                        </div>
+                    )}
                 </div>
 
+                {/* Right Side: Totals & Signature */}
+                <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700 space-y-3">
+                    <div className="flex justify-between text-sm text-gray-600 dark:text-gray-300"><span>Amount</span><span>₹{subTotal.toFixed(2)}</span></div>
+                    <div className="flex justify-between text-sm text-gray-600 dark:text-gray-300"><span>Tax</span><span>₹{totalTax.toFixed(2)}</span></div>
+                    <div className="flex justify-between text-sm text-gray-600 dark:text-gray-300"><span>Discount</span><span>- ₹{totalDiscount.toFixed(2)}</span></div>
+                    <hr className="border-gray-200 dark:border-gray-600" />
+                    <div className="flex justify-between font-bold text-gray-800 dark:text-white"><span>Total</span><span>₹{grandTotal.toFixed(2)}</span></div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 capitalize">{totalInWords}</p>
+
+                    <div className="flex items-center gap-4 pt-4">
+                        <div className="flex items-center"><input id="manual-sig" type="radio" name="signature" checked={purchaseFormData.sign_type === 'digitalSignature'} onChange={() => handleFormChange('sign_type', 'digitalSignature')} className="h-4 w-4 text-purple-600 cursor-pointer" /><label htmlFor="manual-sig" className="ml-2 block text-sm text-gray-700 dark:text-gray-300 cursor-pointer">Manual Signature</label></div>
+                        <div className="flex items-center"><input id="e-sig" type="radio" name="signature" checked={purchaseFormData.sign_type === 'eSignature'} onChange={() => handleFormChange('sign_type', 'eSignature')} className="h-4 w-4 text-purple-600 cursor-pointer" /><label htmlFor="e-sig" className="ml-2 block text-sm text-gray-700 dark:text-gray-300 cursor-pointer">eSignature</label></div>
+                    </div>
+
+                    {purchaseFormData.sign_type === 'digitalSignature' ? (
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Select Signature Name <span className="text-red-500">*</span></label>
+                            <select value={purchaseFormData.signatureId || ''} onChange={(e) => handleFormChange('signatureId', e.target.value)} name='signatureId' className="border border-gray-300 rounded-md px-4 py-2 w-full dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-600">
+                                <option value="" disabled>Select a signature</option>
+                                {manualSignatures.map(sig => <option key={sig.id} value={sig.id}>{sig.name}</option>)}
+                            </select>
+                            {formErrors?.signatureId && <p className="text-red-500 text-xs mt-1">{formErrors.signatureId}</p>}
+                            <p className="mt-2 text-sm font-medium text-gray-700 dark:text-gray-300">Signature Image</p>
+                            <div className="mt-2 h-20 w-48 bg-gray-100 dark:bg-gray-700 rounded-md flex items-center justify-center">
+                                {selectedManualSignatureImage ? <img src={selectedManualSignatureImage} alt="Selected Signature" className="max-h-full max-w-full" /> : <span className="text-xs text-gray-400">No signature selected</span>}
+                            </div>
+                        </div>
+                    ) : (
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Signature Name <span className="text-red-500">*</span></label>
+                            <input name='signatureName' type="text" value={purchaseFormData.signatureName} onChange={e => handleFormChange('signatureName', e.target.value)} placeholder="Enter Signature Name" className="border border-gray-300 rounded-md px-4 py-2 w-full dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-600" />
+                            {formErrors?.signatureName && <p className="text-red-500 text-xs mt-1">{formErrors.signatureName}</p>}
+                            <p className="mt-2 text-sm font-medium text-gray-700 dark:text-gray-300">Draw your eSignature</p>
+                            <div className="mt-2 h-20 w-48 bg-gray-100 dark:bg-gray-700 rounded-md flex items-center justify-center cursor-pointer border-2 border-dashed border-gray-400" onClick={() => setSignatureModalOpen(true)}>
+                                {purchaseFormData.esignDataUrl ? <img src={purchaseFormData.esignDataUrl} alt="Drawn Signature" className="max-h-full max-w-full" /> : <div className="text-center text-gray-500"><Edit3 size={20} className="mx-auto mb-1" /><span className="text-xs">Draw Signature</span></div>}
+                            </div>
+                            {formErrors?.esignDataUrl && <p className="text-red-500 text-xs mt-1">{formErrors.esignDataUrl}</p>}
+                        </div>
+                    )}
+                </div>
             </div>
+            <div className="flex justify-between mt-6">
+                <button type='button' className="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 dark:bg-gray-600 dark:text-gray-200 dark:border-gray-500 cursor-pointer">Cancel</button>
+                <button type='submit' className="ml-4 px-6 py-2 text-sm font-medium text-white bg-purple-600 border border-transparent rounded-md hover:bg-purple-700 cursor-pointer">Save</button>
+            </div>
+            
+            <Modal isOpen={isSignatureModalOpen} onClose={() => setSignatureModalOpen(false)} title="Draw Signature">
+                <div className="p-4">
+                    <div className="bg-white border border-gray-400">
+                        <SignatureCanvas
+                            ref={sigPadRef}
+                            penColor='black'
+                            canvasProps={{ className: 'w-full h-48' }}
+                        />
+                    </div>
+                    <div className="flex justify-end gap-3 mt-4">
+                        <button type='button' onClick={clearSignature} className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 cursor-pointer">Clear</button>
+                        <button type='button' onClick={() => setSignatureModalOpen(false)} className="px-4 py-2 text-sm font-medium text-white bg-gray-500 rounded-md hover:bg-gray-600 cursor-pointer">Cancel</button>
+                        <button type='button' onClick={saveSignature} className="px-4 py-2 text-sm font-medium text-white bg-black rounded-md hover:bg-gray-800 cursor-pointer">Save</button>
+                    </div>
+                </div>
+            </Modal>
+            </form>
         </div>
     );
 };

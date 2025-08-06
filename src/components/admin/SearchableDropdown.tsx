@@ -46,6 +46,11 @@ const SearchableDropdown = ({
                 isOptionEqualToValue={(option, value) => option.id === value.id}
                 disabled={disabled}
                 loading={loading}
+                renderOption={(props, option) => (
+                    <li {...props} key={option.id}>
+                        {option.name}
+                    </li>
+                )}
                 renderInput={(params) => (
                     <TextField
                         {...params}

@@ -251,7 +251,7 @@ const Sidebar = ({ isOpen, toggleSidebar }: { isOpen: boolean; toggleSidebar: ()
   };
 
   return (
-    <aside className={`bg-white text-gray-800 flex flex-col transition-all duration-300 ease-in-out  z-0 border-r border-gray-200 ${isOpen ? 'w-64' : 'w-20'}`}>
+    <aside className={`bg-gray-50 text-gray-800 flex flex-col transition-all duration-300 ease-in-out  z-0 border-r border-gray-200 ${isOpen ? 'w-64' : 'w-20'}`}>
       <div className="p-4 flex items-center h-16 border-b border-gray-200">
         <svg className="w-8 h-8 text-purple-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
         <span className={`text-xl font-bold ml-2 text-gray-800 transition-opacity duration-200 whitespace-nowrap ${isOpen ? 'opacity-100' : 'opacity-0'}`}>

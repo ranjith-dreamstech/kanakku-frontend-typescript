@@ -6,20 +6,21 @@ interface DateInputProps {
     value: Date | null;
     onChange: (date: Date | null) => void;
     minDate?: Date;
+    isRequired?: boolean;
 }
 
-const DateInput: FC<DateInputProps> = ({ label, value, onChange, minDate }) => {
+const DateInput: FC<DateInputProps> = ({ label, value, onChange, minDate, isRequired }) => {
     return (
         <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 ">
-                {label}
+                {label} {isRequired && <span className="text-red-500">*</span>}
             </label>
             <DatePicker
                 value={value}
                 onChange={onChange}
                 minDate={minDate}
                 // FIX: Renamed `inputFormat` to `format`
-                format="MM/dd/yyyy"
+                format="dd/MM/yyyy"
                 // FIX: Replaced `renderInput` with `slotProps`
                 slotProps={{
                     textField: {
