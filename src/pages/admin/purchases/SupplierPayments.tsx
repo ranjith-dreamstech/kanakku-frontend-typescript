@@ -10,12 +10,12 @@ import TableRow from "../../../components/admin/TableRow";
 import Modal from "../../../components/admin/Modal";
 import { toast } from "react-toastify";
 import PaginationWrapper from "../../../components/admin/PaginationWrapper";
-import StatusBadge from "../../../components/admin/StatusBadge";
 
-interface PurchaseOrder {
+interface Purchase {
     id: string;
     purchaseOrderId: string;
-    purchaseOrderDate: string;
+    purchaseId: string;
+    purchaseDate: string;
     billFrom: string;
     billTo?: {
         id: string;
@@ -24,7 +24,7 @@ interface PurchaseOrder {
         phone: string;
         profileImage: string;
     };
-    TotalAmount: number;
+    totalAmount: number;
     payment_mode: string;
     status: string;
 }
@@ -36,17 +36,17 @@ interface PaginationData {
     totalPages: number;
 }
 
-const PurchaseOrderList: FC = () => {
+const SupplierPayments: FC = () => {
     const { token } = useSelector((state: RootState) => state.auth);
     const navigate = useNavigate();
 
     // State for the list of purchase orders and pagination
-    const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
+    const [purchases, setPurchases] = useState<Purchase[]>([]);
     const [pagination, setPagination] = useState<PaginationData>({ total: 0, page: 1, limit: 10, totalPages: 1 });
 
     // State for the delete confirmation modal
     const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
-    const [itemToDelete, setItemToDelete] = useState<PurchaseOrder | null>(null);
+    const [itemToDelete, setItemToDelete] = useState<Purchase | null>(null);
 
     // Using URL search parameters to manage state for search, limit, and page
     const [searchParams, setSearchParams] = useSearchParams();
@@ -68,24 +68,24 @@ const PurchaseOrderList: FC = () => {
     };
 
     // Handler to navigate to the 'new purchase order' page
-    const handleNewPoClick = () => {
-        navigate("/admin/purchase-orders/new");
+    const handleNewPurchaseClick = () => {
+        navigate("/admin/purchase/new");
     };
 
-    // Fetch purchase orders whenever search, limit, or page changes
+    // Fetch purchases whenever search, limit, or page changes
     useEffect(() => {
-        fetchPurchaseOrders(search, limit, page);
+        fetchPurchases(search, limit, page);
     }, [search, limit, page, token]);
 
-    const fetchPurchaseOrders = async (search?: string, limit?: number, page?: number) => {
+    const fetchPurchases = async (search?: string, limit?: number, page?: number) => {
         try {
-            const response = await axios.get(Constants.FETCH_PURCHASE_ORDERS_URL, {
-                params: { search, limit, page },
+            const response = await axios.get(Constants.GET_SUPPLIER_PAYMENTS_URL, {
+                params: { search, limit, page }, 
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            //set nextPurchaseOrderId to sessionStorage
-            if(response.data.data.nextPurchaseOrderId) sessionStorage.setItem('nextPurchaseOrderId', response.data.data.nextPurchaseOrderId);
-            setPurchaseOrders(response.data.data.purchaseOrders ?? []);
+            console.log("response", response.data.data);
+            
+            setPurchases(response.data.data ?? []);
             setPagination(response.data.data.pagination ?? { total: 0, page: 1, limit: 10, totalPages: 1 });
         } catch (error) {
             console.error('Error fetching purchase orders:', error);
@@ -93,11 +93,11 @@ const PurchaseOrderList: FC = () => {
         }
     };
 
-    const handleEditClick = (item: PurchaseOrder) => {
+    const handleEditClick = (item: Purchase) => {
         navigate(`/admin/purchase-orders/edit/${item.id}`);
     };
 
-    const handleDeleteClick = (item: PurchaseOrder) => {
+    const handleDeleteClick = (item: Purchase) => {
         setItemToDelete(item);
         setShowDeleteModal(true);
     };
@@ -109,7 +109,7 @@ const PurchaseOrderList: FC = () => {
                 headers: { Authorization: `Bearer ${token}` }
             });
             toast.success('Purchase order deleted successfully');
-            fetchPurchaseOrders(search, limit, page);
+            fetchPurchases(search, limit, page); 
             setShowDeleteModal(false);
             setItemToDelete(null);
         } catch (error) {
@@ -122,12 +122,12 @@ const PurchaseOrderList: FC = () => {
         {
             label: 'Edit',
             icon: <Edit size={14} />,
-            onClick: (item: PurchaseOrder) => { handleEditClick(item) }
+            onClick: (item: Purchase) => { handleEditClick(item) }
         },
         {
             label: 'Delete',
             icon: <Trash2Icon size={14} />,
-            onClick: (item: PurchaseOrder) => { handleDeleteClick(item) }
+            onClick: (item: Purchase) => { handleDeleteClick(item) }
         }
     ];
 
@@ -138,11 +138,11 @@ const PurchaseOrderList: FC = () => {
     return (
         <div className="p-6 space-y-6">
             <div className="flex justify-between items-center">
-                <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Purchase Orders</h1>
+                <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Supplier Payments</h1>
                 <button
-                    onClick={handleNewPoClick}
+                    onClick={handleNewPurchaseClick}
                     className="bg-purple-600 hover:bg-purple-700 text-white px-2 py-1 rounded-md shadow cursor-pointer flex items-center gap-2">
-                    <CirclePlusIcon size={14} /> New Purchase Order
+                    <CirclePlusIcon size={14} /> New Payment
                 </button>
             </div>
 
@@ -167,42 +167,42 @@ const PurchaseOrderList: FC = () => {
             </div>
 
             <Table headers={["#", "Order Number", "Date", "Supplier", "Amount", "Payment Mode", "Status", "Action"]}>
-                {purchaseOrders && purchaseOrders.map((purchaseOrder, index) => (
+                {purchases && purchases.map((purchase, index) => (
                     <TableRow
-                        key={purchaseOrder.id}
+                        key={purchase.id}
                         index={(page - 1) * limit + index + 1} // Correct index for pagination
-                        row={purchaseOrder}
+                        row={purchase}
                         columns={[
-                            purchaseOrder.purchaseOrderId,
-                            purchaseOrder.purchaseOrderDate,
+                            purchase.purchaseId,
+                            purchase.purchaseDate,
                             <div className="flex items-center">
                                 <img
-                                    src={purchaseOrder.billTo?.profileImage}
-                                    alt={purchaseOrder.billTo?.name}
+                                    src={purchase.billTo?.profileImage}
+                                    alt={purchase.billTo?.name}
                                     className="h-10 w-10 rounded-full object-cover mr-3 border border-gray-300 dark:border-gray-700"
                                 />
                                 <div>
-                                    <span className="font-semibold text-gray-800 dark:text-white capitalize">{purchaseOrder.billTo?.name}</span>
-                                    <p className="text-gray-500 text-xs font-semibold">{purchaseOrder.billTo?.email}</p>
+                                    <span className="font-semibold text-gray-800 dark:text-white capitalize">{purchase.billTo?.name}</span>
+                                    <p className="text-gray-500 text-xs font-semibold">{purchase.billTo?.email}</p>
                                 </div>
                             </div>,
-                            '₹' + purchaseOrder.TotalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-                            purchaseOrder.payment_mode ?? "CASH",
-                            <StatusBadge status={purchaseOrder.status} />,
+                            '₹' + purchase.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+                            purchase.payment_mode ?? "CASH",
+                            purchase.status,
                         ]}
                         actions={tableActions}
                     />
                 ))}
 
-                {purchaseOrders.length === 0 && (
+                {purchases.length === 0 && (
                     <tr>
                         <td colSpan={8} className="text-center py-4 text-gray-800 dark:text-white font-semibold">
-                            No purchase orders found
+                            No supplier payments found
                         </td>
                     </tr>
                 )}
             </Table>
-
+            
             {/* Pagination Component */}
             <PaginationWrapper
                 count={pagination.totalPages}
@@ -218,7 +218,7 @@ const PurchaseOrderList: FC = () => {
             {/* Delete Confirmation Modal */}
             <Modal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} title="Confirm Deletion">
                 <p className="mb-4 text-gray-700 dark:text-gray-200">
-                    Are you sure you want to delete the purchase order <strong>{itemToDelete?.purchaseOrderId}</strong>?
+                    Are you sure you want to delete the purchase order <strong>{itemToDelete?.purchaseId}</strong>?
                 </p>
                 <div className="flex justify-end space-x-2">
                     <button onClick={() => { setShowDeleteModal(false); setItemToDelete(null); }} className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white rounded">
@@ -233,4 +233,4 @@ const PurchaseOrderList: FC = () => {
     );
 }
 
-export default PurchaseOrderList;
+export default SupplierPayments;

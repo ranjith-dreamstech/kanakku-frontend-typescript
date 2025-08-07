@@ -74,6 +74,12 @@ const Constants = {
   DELETE_PURCHASE_ORDER_URL: `${API_BASE_URL}/admin/purchase-orders`,
   FETCH_PURCHASE_ORDER_URL: `${API_BASE_URL}/admin/purchase-orders`,
   UPDATE_PURCHASE_ORDER_URL: `${API_BASE_URL}/admin/purchase-orders`,
+  GET_ALL_PAYMENT_MODES_URL: `${API_BASE_URL}/admin/paymentmode`,
+  GET_PURCHASE_ORDERS_MINIMAL_URL: `${API_BASE_URL}/admin/purchase-minimal`,
+  CREATE_NEW_PURCHASE_URL: `${API_BASE_URL}/admin/purchases`,
+  GET_PURCHASE_URL: `${API_BASE_URL}/admin/purchases`,
+  FETCH_PURCHASE_DETAILS_URL: `${API_BASE_URL}/admin/purchases`,
+  GET_SUPPLIER_PAYMENTS_URL: `${API_BASE_URL}/admin/supplierpayments`,
 };
 
 export default Constants;

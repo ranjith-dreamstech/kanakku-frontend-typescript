@@ -18,7 +18,7 @@ const AdminHeader = ({ toggleSidebar }: HeaderProps) => {
         dispatch(logout());
     }
     return (
-        <header className="flex items-center justify-between px-6 py-2 bg-white-500 shadow z-10">
+        <header className="flex items-center justify-between px-6 py-2 bg-white-500 shadow z-0">
             <div className="flex items-center">
                 <button onClick={toggleSidebar} className="text-gray-500 focus:outline-none cursor-pointer">
                     <Menu className="w-6 h-6" />

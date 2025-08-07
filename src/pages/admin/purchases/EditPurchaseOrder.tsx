@@ -23,6 +23,7 @@ interface User {
 
 interface PurchaseFormData {
     _id: string;
+    purchaseOrderId: string;
     userId: string;
     billFrom: string;
     billTo: string;
@@ -145,6 +146,7 @@ const EditPurchaseOrder: React.FC = () => {
     const [purchaseFormData, setPurchaseFormData] = useState<PurchaseFormData>({
         _id: '',
         userId: user?.id || '',
+        purchaseOrderId: '',
         billFrom: '',
         billTo: '',
         referenceNo: '',
@@ -190,63 +192,60 @@ const EditPurchaseOrder: React.FC = () => {
     }, []);
 
     const fetchPurchaseOrder = async () => {
-    setIsLoading(true);
+        setIsLoading(true);
 
-    try {
-        const response = await axios.get(`${Constants.FETCH_PURCHASE_ORDER_URL}/${purchaseOrderId}`, {
-            headers: { 'Authorization': `Bearer ${token}` },
-        });
+        try {
+            const response = await axios.get(`${Constants.FETCH_PURCHASE_ORDER_URL}/${purchaseOrderId}`, {
+                headers: { 'Authorization': `Bearer ${token}` },
+            });
 
-        const data = response.data.data;
+            const data = response.data.data;
 
-        if (data) {
-            if (data.billTo) {
-                setSelectedSupplier({
-                    id: data.billTo.id,
-                    name: data.billTo.name,
-                });
+            if (data) {
+                if (data.billTo) {
+                    let _supplier = {id: data.billTo.id, name: data.billTo.name};
+                    handleSupplierChange(_supplier);
+                }
+
+                if (data.billFrom) {
+                    let _admin = {id: data.billFrom.id, name: data.billFrom.name};
+                    handleAdminChange(_admin);
+                }
+
+                if (data.bank) {
+                    setBankAccounts((prev) => {
+                        const exists = prev.find(bank => bank.id === data.bank.id);
+                        if (exists) return prev;
+                        return [...prev, { id: data.bank.id, name: data.bank.bankName }];
+                    });
+                }
+
+                setPurchaseFormData(prev => ({
+                    ...prev,
+                    _id: data.id,
+                    purchaseOrderId: data.purchaseOrderId || '',
+                    userId: user?.id || '',
+                    billFrom: data.billFrom?.id || '',
+                    billTo: data.billTo?.id || '',
+                    referenceNo: data.referenceNo || '',
+                    orderDate: data.purchaseOrderDate ? new Date(data.purchaseOrderDate) : null,
+                    status: data.status || '',
+                    items: data.items || [],
+                    notes: data.notes || '',
+                    termsAndCondition: data.termsAndCondition || '',
+                    bank: data.bank?.id || null,
+                    sign_type: data.sign_type || 'digitalSignature',
+                    signatureId: data.signature?.id || null,
+                    signatureName: data.signature?.name || '',
+                    esignDataUrl: data.signature?.image || null
+                }));
             }
-
-            if (data.billFrom) {
-                setSelectedAdmin({
-                    id: data.billFrom.id,
-                    name: data.billFrom.name,
-                });
-            }
-
-            if (data.bank) {
-                setBankAccounts((prev) => {
-                    const exists = prev.find(bank => bank.id === data.bank.id);
-                    if (exists) return prev;
-                    return [...prev, { id: data.bank.id, name: data.bank.bankName }];
-                });
-            }
-
-            setPurchaseFormData(prev => ({
-                ...prev,
-                _id: data.id,
-                userId: user?.id || '',
-                billFrom: data.billFrom?.id || '',
-                billTo: data.billTo?.id || '',
-                referenceNo: data.referenceNo || '',
-                orderDate: data.purchaseOrderDate ? new Date(data.purchaseOrderDate) : null,
-                status: data.status || '',
-                items: data.items || [],
-                notes: data.notes || '',
-                termsAndCondition: data.termsAndCondition || '',
-                bank: data.bank?.id || null,
-                sign_type: data.sign_type || 'digitalSignature',
-                signatureId: data.signature?.id || null,
-                signatureName: data.signature?.name || '',
-                esignDataUrl: data.signature?.image || null
-            }));
+        } catch (error) {
+            console.error('Error fetching purchase order:', error);
+        } finally {
+            setIsLoading(false);
         }
-    } catch (error) {
-        console.error('Error fetching purchase order:', error);
-    } finally {
-        setIsLoading(false);
-    }
-};
+    };
 
     const fetchTaxes = async () => {
         if (!token) return;
@@ -312,8 +311,8 @@ const EditPurchaseOrder: React.FC = () => {
             const response = await axios.get(`${Constants.FETCH_COMPANY_SETTINGS_URL}/${user.id}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            //set billFrom to formData
-            setPurchaseFormData({ ...purchaseFormData, billFrom: user.id });
+            //set billFrom to prev formData
+            setPurchaseFormData(prev => ({ ...prev, billFrom: user.id }));
             setCompanyDetails(response.data.data);
         } catch (error) {
             setCompanyDetails(null);
@@ -326,8 +325,8 @@ const EditPurchaseOrder: React.FC = () => {
             const response = await axios.get(`${Constants.FETCH_USER_BY_ID_URL}/${user.id}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            //set billTo to formData
-            setPurchaseFormData({ ...purchaseFormData, billTo: user.id });
+            //set billTo to prev formData
+            setPurchaseFormData(prev => ({ ...prev, billTo: user.id }));
             setSupplierDetails(response.data.data);
         } catch (error) {
             setSupplierDetails(null);
@@ -418,21 +417,18 @@ const EditPurchaseOrder: React.FC = () => {
 
             const subtotal = qty * rate;
 
-            // ✅ Row-level discount
             const discountAmount = discount_type === 'Percentage'
                 ? (subtotal * (discount_value || 0)) / 100
                 : (discount_value || 0);
 
             const discountedSubtotal = subtotal - discountAmount;
 
-            // ✅ Tax per unit
             const selectedTaxGroup = taxes.find(t => String(t._id) === String(tax_group_id));
             const taxRate = selectedTaxGroup?.total_tax_rate || 0;
             const taxPerUnit = (rate * taxRate) / 100;
 
             const totalTax = taxPerUnit * qty;
 
-            // ✅ Final amount
             const newAmount = discountedSubtotal + totalTax;
 
             return {
@@ -636,9 +632,9 @@ const EditPurchaseOrder: React.FC = () => {
                             <input
                                 type="text"
                                 id="po-id"
-                                value="PO-0001"
+                                value={purchaseFormData.purchaseOrderId}
                                 readOnly
-                                className="border border-gray-300 rounded-md px-4 py-1 w-full dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-600"
+                                className="border border-gray-300 rounded-md px-4 py-2 w-full dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-600"
                             />
                         </div>
                         <div className="w-full">

@@ -85,21 +85,28 @@ const CompanySettings: React.FC = () => {
                     'Authorization': `Bearer ${token}`
                 }
             });
-            setCompanyFormData(response.data.data);
+            setCompanyFormData(prev => ({
+                ...prev,
+                ...response.data.data,
+                country : response.data.data.country ? response.data.data.country._id : null,
+                state : response.data.data.state ? response.data.data.state._id : null,
+                city : response.data.data.city ? response.data.data.city._id : null
+            }));
             //if country available then set it
             if(response.data.data.country){
-                const countryRes = await axios.get(`${Constants.FETCH_COUNTRY_URL}/${response.data.data.country}`, {
+                const countryRes = await axios.get(`${Constants.FETCH_COUNTRY_URL}/${response.data.data.country._id}`, {
                     headers: {
                         'Authorization': `Bearer ${token}`
                     }
                 });
                 const countryData = countryRes.data;
                 const countryObject = { id: countryData._id, name: countryData.name };
+                
                 setSelectedCountry(countryObject);
             }
             //if state available then set it
             if(response.data.data.state){
-                const stateRes = await axios.get(`${Constants.FETCH_STATE_URL}/${response.data.data.state}`, {
+                const stateRes = await axios.get(`${Constants.FETCH_STATE_URL}/${response.data.data.state._id}`, {
                     headers: {
                         'Authorization': `Bearer ${token}`
                     }
@@ -110,7 +117,7 @@ const CompanySettings: React.FC = () => {
             }
             //if city available then set it
             if(response.data.data.city){
-                const cityRes = await axios.get(`${Constants.FETCH_CITY_URL}/${response.data.data.city}`, {
+                const cityRes = await axios.get(`${Constants.FETCH_CITY_URL}/${response.data.data.city._id}`, {
                     headers: {
                         'Authorization': `Bearer ${token}`
                     }
@@ -164,7 +171,7 @@ const CompanySettings: React.FC = () => {
                 id: String(country._id),
                 name: country.name
             }));
-
+            
             setCountries(transformedCountries);
         } catch (error) {
             console.error('Error fetching countries:', error);
@@ -176,6 +183,7 @@ const CompanySettings: React.FC = () => {
     const debouncedFetchCountries = useMemo(() => debounce(fetchCountries, 500), [token]);
 
     const fetchStates = async (countryId: string, searchTerm?: string) => {
+        
         try {
             setLoadingStates(true);
             const response = await axios.get(`${Constants.FETCH_STATES_URL}/${countryId}`, {
@@ -495,7 +503,7 @@ const CompanySettings: React.FC = () => {
                             />
                             {formErrors.city && <span className="text-red-500 text-xs">{formErrors.city}</span>}
                         </div>
-                        <div>
+                        <div className='mt-1'>
                             <label htmlFor="postalCode" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                                 Postal Code <span className="text-red-500">*</span>
                             </label>

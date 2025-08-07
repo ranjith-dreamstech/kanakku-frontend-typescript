@@ -56,8 +56,10 @@ const navItems: NavItemType[] = [
     icon: <ShoppingBag size={20} />,
     title: 'Purchases',
     children: [
+      { type: 'link', to: '/admin/purchases', title: 'Purchases' },
       { type: 'link', to: '/admin/purchase-orders', title: 'Purchase Orders' },
-      { type: 'link', to: '/admin/suppliers', title: 'Suppliers' }
+      { type: 'link', to: '/admin/suppliers', title: 'Suppliers' },
+      { type: 'link', to: '/admin/supplier-payments', title: 'Supplier Payments' }
     ],
   },
   { type: 'header', title: 'Settings & Configurations' },

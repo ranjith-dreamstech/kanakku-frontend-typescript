@@ -12,7 +12,7 @@ import SignatureCanvas from 'react-signature-canvas';
 import { toWords } from 'number-to-words';
 import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
-import CreateSupplierForm from './CreateSupplierForm';
+import PaymentModal from './PaymentModal';
 
 // --- INTERFACES ---
 
@@ -22,16 +22,20 @@ interface User {
 }
 
 interface PurchaseFormData {
+    purchaseOrderId?: string;
     userId: string;
     billFrom: string;
     billTo: string;
     referenceNo: string;
-    orderDate: Date | null;
+    purchaseDate: Date | null;
     status: string;
     items: productItem[];
     notes: string;
     termsAndCondition: string;
-    bank: string | null;
+    paymentMode: string;
+    paymentModeSlug: string;
+    checkNumber?: string;
+    bank?: string | null;
     sign_type: 'digitalSignature' | 'eSignature';
     signatureId: string | null;
     signatureName: string;
@@ -40,6 +44,14 @@ interface PurchaseFormData {
     totalTax: number | null;
     totalDiscount: number | null;
     grandTotal: number | null;
+    sp_referenceNumber?: string;
+    sp_paymentDate?: Date | null;
+    sp_paymentMode?: string;
+    sp_amount?: number;
+    sp_paid_amount?: number;
+    sp_due_amount?: number;
+    sp_notes?: string | null;
+    sp_attachment?: File | null;
 }
 
 interface selectedAdmin {
@@ -125,7 +137,27 @@ interface IBankAccount {
     name: string;
 }
 
-const CreatePurchaseOrder: React.FC = () => {
+interface IPaymentMode {
+    id: string;
+    name: string;
+    slug: string;
+}
+interface PurchaseOrder {
+    id: string;
+    name: string;
+}
+
+interface PaymentModalData {
+    sp_referenceNumber: string;
+    sp_paymentDate: string;
+    sp_paymentMode: string;
+    sp_amount: number;
+    sp_paid_amount: number;
+    sp_due_amount: number;
+    sp_notes?: string | null;
+    sp_attachment?: File | null;
+}
+const CreatePurchase: React.FC = () => {
     const navigate = useNavigate();
     const { token, user } = useSelector((state: RootState) => state.auth);
     const [adminUsers, setAdminUsers] = useState<User[]>([]);
@@ -134,22 +166,27 @@ const CreatePurchaseOrder: React.FC = () => {
     const [productSearchInput, setProductSearchInput] = useState<string>('');
     const [isProductLoading, setIsProductLoading] = useState<boolean>(false);
     const debouncedSearchTerm = useDebounce(productSearchInput, 500);
-
+    const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
     const [selectedAdmin, setSelectedAdmin] = useState<User | null>(null);
     const [selectedSupplier, setSelectedSupplier] = useState<User | null>(null);
     const [companyDetails, setCompanyDetails] = useState<selectedAdmin | null>(null);
     const [supplierDetails, setSupplierDetails] = useState<selectedSupplier | null>(null);
-    const [isSupplierModalOpen, setIsSupplierModalOpen] = useState(false);
+    const [paymentModes, setPaymentModes] = useState<IPaymentMode[]>([]);
+    const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
     const [purchaseFormData, setPurchaseFormData] = useState<PurchaseFormData>({
+        purchaseOrderId: '',
         userId: user?.id || '',
         billFrom: '',
         billTo: '',
         referenceNo: '',
-        orderDate: null,
+        purchaseDate: null,
         status: '',
         items: [],
         notes: '',
         termsAndCondition: '',
+        paymentMode: '',
+        paymentModeSlug: '',
+        checkNumber: '',
         bank: null,
         sign_type: 'digitalSignature',
         signatureId: null,
@@ -158,7 +195,13 @@ const CreatePurchaseOrder: React.FC = () => {
         subTotal: null,
         totalTax: null,
         totalDiscount: null,
-        grandTotal: null
+        grandTotal: null,
+        sp_referenceNumber: '',
+        sp_paymentDate: null,
+        sp_paymentMode: '',
+        sp_amount: 0,
+        sp_paid_amount: 0,
+        sp_due_amount: 0,
     });
 
     // Edit Modal State
@@ -175,13 +218,98 @@ const CreatePurchaseOrder: React.FC = () => {
     const sigPadRef = useRef<SignatureCanvas>(null);
 
     useEffect(() => {
+        fetchPaymentModes();
         fetchAdminUsers();
         fetchSuppliers();
         fetchTaxes();
         fetchBankAccounts();
         fetchManualSignatures();
+        fetchPurchaseOrders();
     }, []);
 
+    useEffect(() => {
+        if (purchaseFormData.purchaseOrderId) fetchPurchaseOrder();
+    }, [purchaseFormData.purchaseOrderId]);
+
+    const fetchPurchaseOrder = async () => {
+        try {
+            const response = await axios.get(`${Constants.FETCH_PURCHASE_ORDER_URL}/${purchaseFormData.purchaseOrderId}`, {
+                headers: { 'Authorization': `Bearer ${token}` },
+            });
+
+            const data = response.data.data;
+
+            if (data) {
+                if (data.billTo) {
+                    let _supplier = { id: data.billTo.id, name: data.billTo.name };
+                    // setSelectedSupplier(_supplier);
+                    handleSupplierChange(_supplier);
+                }
+
+                if (data.billFrom) {
+                    let _admin = { id: data.billFrom.id, name: data.billFrom.name };
+                    // setSelectedAdmin(_admin);
+                    handleAdminChange(_admin);
+                }
+
+                if (data.bank) {
+                    setBankAccounts((prev) => {
+                        const exists = prev.find(bank => bank.id === data.bank.id);
+                        if (exists) return prev;
+                        return [...prev, { id: data.bank.id, name: data.bank.bankName }];
+                    });
+                }
+
+                setPurchaseFormData(prev => ({
+                    ...prev,
+                    _id: data.id,
+                    userId: user?.id || '',
+                    billFrom: data.billFrom?.id || '',
+                    billTo: data.billTo?.id || '',
+                    referenceNo: data.referenceNo || '',
+                    purchaseDate: data.purchaseOrderDate ? new Date(data.purchaseOrderDate) : null,
+                    status: data.status || '',
+                    items: data.items || [],
+                    notes: data.notes || '',
+                    termsAndCondition: data.termsAndCondition || '',
+                    bank: data.bank?.id || null,
+                    sign_type: data.sign_type || 'digitalSignature',
+                    signatureId: data.signature?.id || null,
+                    signatureName: data.signature?.name || '',
+                    esignDataUrl: data.signature?.image || null
+                }));
+                console.log(data);
+                
+            }
+        } catch (error) {
+            console.error('Error fetching purchase order:', error);
+        }
+    }
+    const fetchPurchaseOrders = async () => {
+        try {
+            const response = await axios.get(Constants.GET_PURCHASE_ORDERS_MINIMAL_URL, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = response.data.data;
+            if (data.length > 0) {
+                const formattedOrders = data.map((order: any) => ({ id: order.id, name: order.purchaseOrderId }));
+
+                setPurchaseOrders(formattedOrders);
+            }
+        } catch (error) {
+            console.error('Error fetching purchase orders:', error);
+        }
+    }
+    const fetchPaymentModes = async () => {
+        try {
+            const response = await axios.get(Constants.GET_ALL_PAYMENT_MODES_URL, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            setPaymentModes(response.data.data);
+        } catch (error) {
+            console.error('Error fetching payment modes:', error);
+        }
+    }
     const fetchTaxes = async () => {
         if (!token) return;
         try {
@@ -246,8 +374,8 @@ const CreatePurchaseOrder: React.FC = () => {
             const response = await axios.get(`${Constants.FETCH_COMPANY_SETTINGS_URL}/${user.id}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            //set billFrom to formData
-            setPurchaseFormData({ ...purchaseFormData, billFrom: user.id });
+            //set billFrom to prev purchaseFormData
+            setPurchaseFormData(prev => ({ ...prev, billFrom: user.id }));
             setCompanyDetails(response.data.data);
         } catch (error) {
             setCompanyDetails(null);
@@ -260,8 +388,8 @@ const CreatePurchaseOrder: React.FC = () => {
             const response = await axios.get(`${Constants.FETCH_USER_BY_ID_URL}/${user.id}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            //set billTo to formData
-            setPurchaseFormData({ ...purchaseFormData, billTo: user.id });
+            //set billTo to prev formData
+            setPurchaseFormData(prev => ({ ...prev, billTo: user.id }));
             setSupplierDetails(response.data.data);
         } catch (error) {
             setSupplierDetails(null);
@@ -352,18 +480,21 @@ const CreatePurchaseOrder: React.FC = () => {
 
             const subtotal = qty * rate;
 
+            // ✅ Row-level discount
             const discountAmount = discount_type === 'Percentage'
                 ? (subtotal * (discount_value || 0)) / 100
                 : (discount_value || 0);
 
             const discountedSubtotal = subtotal - discountAmount;
 
+            // ✅ Tax per unit
             const selectedTaxGroup = taxes.find(t => String(t._id) === String(tax_group_id));
             const taxRate = selectedTaxGroup?.total_tax_rate || 0;
             const taxPerUnit = (rate * taxRate) / 100;
 
             const totalTax = taxPerUnit * qty;
 
+            // ✅ Final amount
             const newAmount = discountedSubtotal + totalTax;
 
             return {
@@ -455,11 +586,8 @@ const CreatePurchaseOrder: React.FC = () => {
     const validatePurchaseOrderData = () => {
         // Add your validation logic here
         const newErrors: { [key: string]: string } = {};
-        // if (!purchaseFormData.poId.trim()) newErrors.poId = 'Order ID is required.';
-        //reference number required
-        if (!purchaseFormData.referenceNo.trim()) newErrors.referenceNo = 'Reference number is required.';
         //order date required
-        if (!purchaseFormData.orderDate) newErrors.orderDate = 'Order date is required.';
+        if (!purchaseFormData.purchaseDate) newErrors.purchaseDate = 'Order date is required.';
         //status required
         if (!purchaseFormData.status.trim()) newErrors.status = 'Status is required.';
         //billFrom required
@@ -473,14 +601,17 @@ const CreatePurchaseOrder: React.FC = () => {
         //sign_type if esignature then signatureName required
         if (purchaseFormData.sign_type === 'eSignature' && !purchaseFormData.signatureName.trim()) newErrors.signatureName = 'Esignature name is required.';
         if (purchaseFormData.sign_type === 'eSignature' && !purchaseFormData.esignDataUrl) newErrors.esignDataUrl = 'Esignature is required.';
+
+        //if status paid then paymentDate, paymentMode and amount required open modal
+        if (purchaseFormData.status === 'paid' && (!purchaseFormData.sp_paymentDate || !purchaseFormData.sp_paymentMode || !purchaseFormData.sp_amount)) {
+            newErrors.status = 'Payment details are required.';
+            setIsPaymentModalOpen(true);
+        }
         setFormErrors(newErrors);
-        console.log("formErrors", formErrors);
-        console.log("purchaseFormData", purchaseFormData);
         return newErrors;
     }
     const savePurchaseOrder = async (e: React.FormEvent) => {
         e.preventDefault();
-
         const errors = validatePurchaseOrderData();
 
         if (Object.keys(errors).length > 0) {
@@ -492,14 +623,14 @@ const CreatePurchaseOrder: React.FC = () => {
 
         const formData = new FormData();
 
-        Object.entries(purchaseFormData).forEach(([key, value]) => {
+        for (const [key, value] of Object.entries(purchaseFormData)) {
             if (key === 'esignDataUrl' && purchaseFormData.sign_type === 'eSignature') {
-                const file = dataURLtoFile(value, 'signature.png');
-                formData.append('signatureImage', file);
-
+                const file = await dataURLtoFile(value, 'signature.png');
+                if (file) {
+                    formData.append('signatureImage', file);
+                }
             } else if (value instanceof Date) {
                 formData.append(key, value.toISOString().split('T')[0]);
-
             } else if (Array.isArray(value) && key === 'items') {
                 value.forEach((item, index) => {
                     Object.entries(item).forEach(([itemKey, itemValue]) => {
@@ -508,14 +639,14 @@ const CreatePurchaseOrder: React.FC = () => {
                         }
                     });
                 });
-
             } else if (typeof value !== 'object' && value !== undefined && value !== null) {
                 formData.append(key, String(value));
             }
-        });
+        }
+
 
         try {
-            await axios.post(Constants.CREATE_PURCHASE_ORDER_URL, formData, {
+            await axios.post(Constants.CREATE_NEW_PURCHASE_URL, formData, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                     'Content-Type': 'multipart/form-data',
@@ -523,7 +654,7 @@ const CreatePurchaseOrder: React.FC = () => {
             });
 
             toast.success('Purchase order saved successfully.');
-            navigate('/admin/purchase-orders');
+            navigate('/admin/purchases');
         } catch (error: any) {
             if (error.response?.status !== 200 && error.response?.data?.errors) {
                 setFormErrors(error.response.data.errors);
@@ -534,20 +665,46 @@ const CreatePurchaseOrder: React.FC = () => {
     };
 
 
-    const dataURLtoFile = (dataUrl: string, filename: string): File => {
-        const arr = dataUrl.split(',');
-        const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/png';
-        const bstr = atob(arr[1]);
-        let n = bstr.length;
-        const u8arr = new Uint8Array(n);
+    const dataURLtoFile = async (input: string, filename: string): Promise<File | null> => {
+        try {
+            if (input.startsWith('data:')) {
+                // Base64 Data URL case
+                const arr = input.split(',');
+                if (arr.length !== 2) return null;
 
-        while (n--) {
-            u8arr[n] = bstr.charCodeAt(n);
+                const mimeMatch = arr[0].match(/:(.*?);/);
+                const mime = mimeMatch?.[1] || 'image/png';
+                const bstr = atob(arr[1]);
+                const u8arr = new Uint8Array(bstr.length);
+
+                for (let i = 0; i < bstr.length; i++) {
+                    u8arr[i] = bstr.charCodeAt(i);
+                }
+
+                return new File([u8arr], filename, { type: mime });
+            } else if (input.startsWith('http') || input.startsWith('/')) {
+                // Normal URL case (fetch the image)
+                const response = await fetch(input);
+                if (!response.ok) return null;
+
+                const blob = await response.blob();
+                const mime = blob.type || 'image/png';
+                return new File([blob], filename, { type: mime });
+            }
+
+            return null;
+        } catch {
+            return null;
         }
-
-        return new File([u8arr], filename, { type: mime });
     };
 
+
+
+    const handlePaymentConfirm = (paymentModalData: PurchaseFormData) => {
+        //set with previous data
+        setPurchaseFormData(prev => ({ ...prev, ...paymentModalData }));
+        setIsPaymentModalOpen(false);
+    }
     return (
         <div className="p-4 md:p-6 bg-white-50 dark:bg-gray-50 dark:bg-gray-900 min-h-screen border border-gray-200 dark:border-gray-700 rounded">
             <form onSubmit={savePurchaseOrder}>
@@ -555,59 +712,45 @@ const CreatePurchaseOrder: React.FC = () => {
 
                     {/* Header */}
                     <div className="flex justify-between items-center mb-6">
-                        <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Purchase Order Details</h1>
+                        <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Purchase Details</h1>
                         <img src="https://kanakku-web-new.dreamstechnologies.com/e4f01b6957284e6a7fcd.svg" alt="" />
                     </div>
                     {/* Top Section: PO Details & Logo */}
                     <div className="w-full">
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 w-full">
                             <div className="w-full">
-                                <label htmlFor="po-id" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    Order ID
-                                </label>
-                                <input
-                                    type="text"
-                                    id="po-id"
-                                    value={sessionStorage.getItem('nextPurchaseOrderId') || ''}
-                                    readOnly
-                                    className="border border-gray-300 rounded-md px-4 py-2 w-full dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-600"
-                                />
-                            </div>
-                            <div className="w-full">
                                 <label htmlFor="ref-no" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    Reference No <em className='text-red-500'>*</em>
+                                    Purchase Order
                                 </label>
-                                <input
-                                    type="text"
-                                    id="ref-no"
-                                    placeholder="Enter Reference Number"
-                                    name='referenceNo'
-                                    onChange={(e) => handleFormChange('referenceNo', e.target.value)}
-                                    className="border border-gray-300 rounded-md px-4 py-2 w-full dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-600"
+                                <SearchableDropdown
+                                    options={purchaseOrders}
+                                    placeholder='Select Purchase Order'
+                                    value={purchaseOrders.find(order => order.id === purchaseFormData.purchaseOrderId) ?? null}
+                                    onChange={(e, value) => handleFormChange('purchaseOrderId', (value as PurchaseOrder)?.id || null)}
                                 />
-                                {formErrors?.referenceNo && <span className="text-red-500 text-sm">{formErrors.referenceNo}</span>}
                             </div>
-                            <div className="w-full">
+                            <div className="w-full mt-1">
                                 <DateInput
                                     label="Order Date"
-                                    value={purchaseFormData.orderDate}
-                                    onChange={(newDate) => handleFormChange('orderDate', newDate)}
-                                    minDate={new Date()}
+                                    value={purchaseFormData.purchaseDate}
+                                    onChange={(newDate) => handleFormChange('purchaseDate', newDate)}
                                     isRequired
                                 />
-                                {formErrors?.orderDate && <span className="text-red-500 text-sm">{formErrors.orderDate}</span>}
+                                {formErrors?.purchaseDate && <span className="text-red-500 text-sm">{formErrors.purchaseDate}</span>}
                             </div>
-                            <div className="w-full">
+                            <div className="w-full mt-1">
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                                     Status <em className='text-red-500'>*</em>
                                 </label>
                                 <select
                                     name="status"
                                     onChange={(e) => handleFormChange('status', e.target.value)}
+                                    value={purchaseFormData.status}
                                     className="border border-gray-300 rounded-md px-4 py-2 w-full dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-600"
                                 >
                                     <option>Select</option>
                                     <option value="new">New</option>
+                                    <option value="paid">Paid</option>
                                     <option value="pending">Pending</option>
                                     <option value="cancelled">Cancelled</option>
                                 </select>
@@ -657,10 +800,7 @@ const CreatePurchaseOrder: React.FC = () => {
                         <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
                             <div className="flex justify-between items-center">
                                 <h3 className="font-bold text-gray-800 dark:text-white">Bill To <span className='text-red-500'>*</span></h3>
-                                <button
-                                    type='button'
-                                    onClick={() => setIsSupplierModalOpen(true)}
-                                    className="flex items-center text-sm text-purple-600 dark:text-purple-400 font-semibold cursor-pointer">
+                                <button className="flex items-center text-sm text-purple-600 dark:text-purple-400 font-semibold">
                                     <PlusCircle className="h-4 w-4 mr-1" />
                                     Add New
                                 </button>
@@ -888,7 +1028,7 @@ const CreatePurchaseOrder: React.FC = () => {
                         <div className="flex items-center gap-2 mb-4">
                             <button type='button' onClick={() => setActiveInfoTab('notes')} className={`px-4 py-2 text-sm cursor-pointer font-medium rounded-md ${activeInfoTab === 'notes' ? 'bg-purple-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}>Add Notes</button>
                             <button type='button' onClick={() => setActiveInfoTab('termsAndCondition')} className={`px-4 py-2 text-sm cursor-pointer font-medium rounded-md ${activeInfoTab === 'termsAndCondition' ? 'bg-purple-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}>Add Terms & Conditions</button>
-                            <button type='button' onClick={() => setActiveInfoTab('bank')} className={`px-4 py-2 text-sm cursor-pointer font-medium rounded-md ${activeInfoTab === 'bank' ? 'bg-purple-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}>Bank Details</button>
+                            <button type='button' onClick={() => setActiveInfoTab('bank')} className={`px-4 py-2 text-sm cursor-pointer font-medium rounded-md ${activeInfoTab === 'bank' ? 'bg-purple-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}>Payment Details</button>
                         </div>
 
                         {activeInfoTab === 'notes' && (
@@ -904,15 +1044,56 @@ const CreatePurchaseOrder: React.FC = () => {
                             </div>
                         )}
                         {activeInfoTab === 'bank' && (
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Account</label>
-                                <SearchableDropdown
-                                    options={bankAccounts}
-                                    placeholder="Select Bank Account"
-                                    value={bankAccounts.find(b => b.id === purchaseFormData.bank) || null}
-                                    onChange={(e, value) => handleFormChange('bank', (value as IBankAccount)?.id || null)}
-                                />
-                            </div>
+                            <>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                        Payment Mode
+                                    </label>
+                                    <SearchableDropdown
+                                        options={paymentModes}
+                                        placeholder="Select Payment Mode"
+                                        value={paymentModes.find((mode) => mode.id === purchaseFormData.paymentMode) || null}
+                                        onChange={(e, value) => {
+                                            const selectedMode = value as IPaymentMode;
+                                            handleFormChange('paymentMode', selectedMode?.id || null);
+                                            handleFormChange('paymentModeSlug', selectedMode?.slug || null);
+                                        }}
+                                    />
+                                </div>
+
+                                {purchaseFormData.paymentModeSlug === 'cheque' && (
+                                    <div className="mt-2">
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                            Check Number
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={purchaseFormData.checkNumber}
+                                            onChange={(e) => handleFormChange('checkNumber', e.target.value)}
+                                            placeholder="Enter Check Number"
+                                            className='border border-gray-300 rounded-md px-4 py-2 w-full dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-600'
+                                        />
+                                    </div>
+                                )}
+
+                                {purchaseFormData.paymentModeSlug === 'bank-deposit' && (
+                                    <div className="mt-2">
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                            Account
+                                        </label>
+                                        <SearchableDropdown
+                                            options={bankAccounts}
+                                            placeholder="Select Bank Account"
+                                            value={bankAccounts.find((acc) => acc.id === purchaseFormData.bank) || null}
+                                            onChange={(e, value) => {
+                                                const selectedBank = value as IBankAccount;
+                                                handleFormChange('bank', selectedBank?.id || null);
+                                            }}
+                                        />
+                                    </div>
+                                )}
+                            </>
+
                         )}
                     </div>
 
@@ -980,14 +1161,16 @@ const CreatePurchaseOrder: React.FC = () => {
                 </Modal>
             </form>
 
-            {/* Create Supplier Form */}
-            <CreateSupplierForm
-                isOpen={isSupplierModalOpen}
-                onClose={() => setIsSupplierModalOpen(false)}
-                onSuccess={() => setIsSupplierModalOpen(false)}
+            {/* Payment Modal */}
+            <PaymentModal 
+                isOpen={isPaymentModalOpen}
+                onClose={() => setIsPaymentModalOpen(false)}
+                onConfirm={handlePaymentConfirm}
+                totalAmount={grandTotal}
+                paymentModes={paymentModes}
             />
         </div>
     );
 };
 
-export default CreatePurchaseOrder;
+export default CreatePurchase;

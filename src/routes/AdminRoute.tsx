@@ -19,6 +19,9 @@ import CreatePurchaseOrder from "../pages/admin/purchases/CreatePurchaseOrder";
 import BankAccountList from "../pages/admin/settings/financeSettings/BankAccountList";
 import CompanySettings from "../pages/admin/settings/websiteSettings/CompanySettings";
 import EditPurchaseOrder from "../pages/admin/purchases/EditPurchaseOrder";
+import PurchaseList from "../pages/admin/purchases/PurchaseList";
+import CreatePurchase from "../pages/admin/purchases/CreatePurchase";
+import SupplierPayments from "../pages/admin/purchases/SupplierPayments";
 
 const AdminRoute = () => {
     return (
@@ -55,7 +58,10 @@ const AdminRoute = () => {
                     <Route path="/purchase-orders" element={<PurchaseOrderList />} />
                     <Route path="/purchase-orders/new" element={<CreatePurchaseOrder />} />
                     <Route path="/purchase-orders/edit/:id" element={<EditPurchaseOrder />} />
+                    <Route path="/purchases" element={<PurchaseList />} />
+                    <Route path="/purchase/new" element={<CreatePurchase />} />
                     <Route path="/suppliers" element={<SupplierList />} />
+                    <Route path="/supplier-payments" element={<SupplierPayments />} />
                 </Route>
             </Route>
         </Routes>
