@@ -80,6 +80,9 @@ const Constants = {
   GET_PURCHASE_URL: `${API_BASE_URL}/admin/purchases`,
   FETCH_PURCHASE_DETAILS_URL: `${API_BASE_URL}/admin/purchases`,
   GET_SUPPLIER_PAYMENTS_URL: `${API_BASE_URL}/admin/supplierpayments`,
+  FETCH_ALL_PURCHASE_FOR_DEBIT_NOTE_URL: `${API_BASE_URL}/admin/purchases-minimal`,
+  GET_PURCHASE_DETAILS_URL: `${API_BASE_URL}/admin/purchases`,
+  CREATE_DEBIT_NOTE_URL: `${API_BASE_URL}/admin/debitnote`
 };
 
 export default Constants;

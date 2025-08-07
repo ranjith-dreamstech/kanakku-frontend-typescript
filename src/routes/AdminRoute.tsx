@@ -22,6 +22,8 @@ import EditPurchaseOrder from "../pages/admin/purchases/EditPurchaseOrder";
 import PurchaseList from "../pages/admin/purchases/PurchaseList";
 import CreatePurchase from "../pages/admin/purchases/CreatePurchase";
 import SupplierPayments from "../pages/admin/purchases/SupplierPayments";
+import DebitNoteList from "../pages/admin/purchases/DebitNoteList";
+import CreateDebitNote from "../pages/admin/purchases/CreateDebitNote";
 
 const AdminRoute = () => {
     return (
@@ -59,6 +61,8 @@ const AdminRoute = () => {
                     <Route path="/purchase-orders/new" element={<CreatePurchaseOrder />} />
                     <Route path="/purchase-orders/edit/:id" element={<EditPurchaseOrder />} />
                     <Route path="/purchases" element={<PurchaseList />} />
+                    <Route path="/debit-notes" element={<DebitNoteList />} />
+                    <Route path="/debit-notes/new" element={<CreateDebitNote />} />
                     <Route path="/purchase/new" element={<CreatePurchase />} />
                     <Route path="/suppliers" element={<SupplierList />} />
                     <Route path="/supplier-payments" element={<SupplierPayments />} />

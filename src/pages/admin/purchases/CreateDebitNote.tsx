@@ -22,12 +22,12 @@ interface User {
 }
 
 interface PurchaseFormData {
-    purchaseOrderId?: string;
+    purchaseId?: string;
     userId: string;
     billFrom: string;
     billTo: string;
     referenceNo: string;
-    purchaseDate: Date | null;
+    debitNoteDate: Date | null;
     status: string;
     items: productItem[];
     notes: string;
@@ -157,7 +157,7 @@ interface PaymentModalData {
     sp_notes?: string | null;
     sp_attachment?: File | null;
 }
-const CreatePurchase: React.FC = () => {
+const CreateDebitNote: React.FC = () => {
     const navigate = useNavigate();
     const { token, user } = useSelector((state: RootState) => state.auth);
     const [adminUsers, setAdminUsers] = useState<User[]>([]);
@@ -172,14 +172,14 @@ const CreatePurchase: React.FC = () => {
     const [companyDetails, setCompanyDetails] = useState<selectedAdmin | null>(null);
     const [supplierDetails, setSupplierDetails] = useState<selectedSupplier | null>(null);
     const [paymentModes, setPaymentModes] = useState<IPaymentMode[]>([]);
-    const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
+    const [purchases, setPurchases] = useState<PurchaseOrder[]>([]);
     const [purchaseFormData, setPurchaseFormData] = useState<PurchaseFormData>({
-        purchaseOrderId: '',
+        purchaseId: '',
         userId: user?.id || '',
         billFrom: '',
         billTo: '',
         referenceNo: '',
-        purchaseDate: null,
+        debitNoteDate: null,
         status: '',
         items: [],
         notes: '',
@@ -228,15 +228,15 @@ const CreatePurchase: React.FC = () => {
     }, []);
 
     useEffect(() => {
-        if (purchaseFormData.purchaseOrderId) fetchPurchaseOrder();
-    }, [purchaseFormData.purchaseOrderId]);
+        if (purchaseFormData.purchaseId) fetchPurchase();
+    }, [purchaseFormData.purchaseId]);
 
-    const fetchPurchaseOrder = async () => {
+    const fetchPurchase = async () => {
         try {
-            const response = await axios.get(`${Constants.FETCH_PURCHASE_ORDER_URL}/${purchaseFormData.purchaseOrderId}`, {
+            const response = await axios.get(`${Constants.GET_PURCHASE_DETAILS_URL}/${purchaseFormData.purchaseId}`, {
                 headers: { 'Authorization': `Bearer ${token}` },
             });
-
+            
             const data = response.data.data;
 
             if (data) {
@@ -267,7 +267,7 @@ const CreatePurchase: React.FC = () => {
                     billFrom: data.billFrom?.id || '',
                     billTo: data.billTo?.id || '',
                     referenceNo: data.referenceNo || '',
-                    purchaseDate: data.purchaseOrderDate ? new Date(data.purchaseOrderDate) : null,
+                    debitNoteDate: data.purchaseDate ? new Date(data.purchaseDate) : null,
                     status: data.status || '',
                     items: data.items || [],
                     notes: data.notes || '',
@@ -287,14 +287,14 @@ const CreatePurchase: React.FC = () => {
     }
     const fetchPurchaseOrders = async () => {
         try {
-            const response = await axios.get(Constants.GET_PURCHASE_ORDERS_MINIMAL_URL, {
+            const response = await axios.get(Constants.FETCH_ALL_PURCHASE_FOR_DEBIT_NOTE_URL, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const data = response.data.data;
             if (data.length > 0) {
-                const formattedOrders = data.map((order: any) => ({ id: order.id, name: order.purchaseOrderId }));
+                const formattedPurchases = data.map((order: any) => ({ id: order.id, name: order.purchaseId }));
 
-                setPurchaseOrders(formattedOrders);
+                setPurchases(formattedPurchases);
             }
         } catch (error) {
             console.error('Error fetching purchase orders:', error);
@@ -537,12 +537,16 @@ const CreatePurchase: React.FC = () => {
             return acc;
         }, { subTotal: 0, totalTax: 0, totalDiscount: 0 });
         let grand_total = totals.subTotal - totals.totalDiscount + totals.totalTax;
+        console.log('totals', totals);
+        
         setPurchaseFormData(prev => ({ ...prev, subTotal: totals.subTotal, totalTax: totals.totalTax, totalDiscount: totals.totalDiscount, grandTotal: grand_total }));
         return { ...totals, grandTotal: grand_total };
     }, [purchaseFormData.items]);
 
     const totalInWords = useMemo(() => {
-        if (grandTotal <= 0) return 'Zero';
+        console.log("grandTotal", grandTotal);
+        
+        if (grandTotal && grandTotal <= 0) return 'Zero';
         return toWords(grandTotal).replace(/,/g, '').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ') + ' Only';
     }, [grandTotal]);
 
@@ -587,7 +591,7 @@ const CreatePurchase: React.FC = () => {
         // Add your validation logic here
         const newErrors: { [key: string]: string } = {};
         //order date required
-        if (!purchaseFormData.purchaseDate) newErrors.purchaseDate = 'Order date is required.';
+        if (!purchaseFormData.debitNoteDate) newErrors.debitNoteDate = 'Order date is required.';
         //status required
         if (!purchaseFormData.status.trim()) newErrors.status = 'Status is required.';
         //billFrom required
@@ -644,21 +648,9 @@ const CreatePurchase: React.FC = () => {
             }
         }
 
-        //remove null value parameters
-        for (const [key, value] of formData.entries()) {
-            if (
-                value === null ||                     // true null
-                value === undefined ||                // undefined (rare in FormData, but safe check)
-                value === 'null' ||                   // string "null"
-                value === ''                          // empty string
-            ) {
-                formData.delete(key);
-            }
-        }
-
 
         try {
-            await axios.post(Constants.CREATE_NEW_PURCHASE_URL, formData, {
+            await axios.post(Constants.CREATE_DEBIT_NOTE_URL, formData, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                     'Content-Type': 'multipart/form-data',
@@ -732,23 +724,23 @@ const CreatePurchase: React.FC = () => {
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 w-full">
                             <div className="w-full">
                                 <label htmlFor="ref-no" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    Purchase Order
+                                    Purchase ID
                                 </label>
                                 <SearchableDropdown
-                                    options={purchaseOrders}
+                                    options={purchases}
                                     placeholder='Select Purchase Order'
-                                    value={purchaseOrders.find(order => order.id === purchaseFormData.purchaseOrderId) ?? null}
-                                    onChange={(e, value) => handleFormChange('purchaseOrderId', (value as PurchaseOrder)?.id || null)}
+                                    value={purchases.find(order => order.id === purchaseFormData.purchaseId) ?? null}
+                                    onChange={(e, value) => handleFormChange('purchaseId', (value as PurchaseOrder)?.id || null)}
                                 />
                             </div>
                             <div className="w-full mt-1">
                                 <DateInput
                                     label="Order Date"
-                                    value={purchaseFormData.purchaseDate}
-                                    onChange={(newDate) => handleFormChange('purchaseDate', newDate)}
+                                    value={purchaseFormData.debitNoteDate}
+                                    onChange={(newDate) => handleFormChange('debitNoteDate', newDate)}
                                     isRequired
                                 />
-                                {formErrors?.purchaseDate && <span className="text-red-500 text-sm">{formErrors.purchaseDate}</span>}
+                                {formErrors?.debitNoteDate && <span className="text-red-500 text-sm">{formErrors.debitNoteDate}</span>}
                             </div>
                             <div className="w-full mt-1">
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -1185,4 +1177,4 @@ const CreatePurchase: React.FC = () => {
     );
 };
 
-export default CreatePurchase;
+export default CreateDebitNote;
