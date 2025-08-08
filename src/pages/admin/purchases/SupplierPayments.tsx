@@ -98,15 +98,15 @@ const SupplierPayments: FC = () => {
     }, [search, limit, page, token]);
 
     const fetchPaymentModes = async () => {
-            try {
-                const response = await axios.get(Constants.GET_ALL_PAYMENT_MODES_URL, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                setPaymentModes(response.data.data);
-            } catch (error) {
-                console.error('Error fetching payment modes:', error);
-            }
+        try {
+            const response = await axios.get(Constants.GET_ALL_PAYMENT_MODES_URL, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            setPaymentModes(response.data.data);
+        } catch (error) {
+            console.error('Error fetching payment modes:', error);
         }
+    }
     const fetchSupplierPayments = async (search?: string, limit?: number, page?: number) => {
         try {
             const response = await axios.get(Constants.GET_SUPPLIER_PAYMENTS_URL, {
@@ -164,7 +164,8 @@ const SupplierPayments: FC = () => {
                 headers: { Authorization: `Bearer ${token}` }
             });
             toast.success('Payment deleted successfully');
-            fetchSupplierPayments(search, limit, page);
+            await fetchSupplierPayments(search, limit, page);
+            await fetchPurchasesForDropdown();
             setShowDeleteModal(false);
             setItemToDelete(null);
         } catch (error) {
@@ -175,7 +176,7 @@ const SupplierPayments: FC = () => {
 
     // --- UI & TABLE SETUP ---
     const tableActions = [
-        { label: 'Edit', icon: <Edit size={14} />, onClick: handleEditClick },
+        // { label: 'Edit', icon: <Edit size={14} />, onClick: handleEditClick },
         { label: 'Delete', icon: <Trash2Icon size={14} />, onClick: handleDeleteClick }
     ];
 
@@ -236,7 +237,7 @@ const SupplierPayments: FC = () => {
                             payment.purchase?.purchaseId ?? '-',
                             payment.paymentDate,
                             '₹' + payment.paidAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-                           <PaymentModeBadge mode={payment.paymentMode} />,
+                            <PaymentModeBadge mode={payment.paymentMode} />,
                         ]}
                         actions={tableActions}
                     />
@@ -245,7 +246,7 @@ const SupplierPayments: FC = () => {
                     <tr><td colSpan={7} className="text-center py-4 text-gray-800 dark:text-white font-semibold">No supplier payments found</td></tr>
                 )}
             </Table>
-            
+
             <PaginationWrapper count={pagination.totalPages} page={page} from={from} to={to} total={pagination.total} onChange={(e, newPage) => handlePageChange(newPage)} />
 
             {/* Modals */}
@@ -260,7 +261,7 @@ const SupplierPayments: FC = () => {
                     paymentModes={paymentModes}
                 />
             )}
-            
+
             <Modal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} title="Confirm Deletion">
                 <p className="mb-4 text-gray-700 dark:text-gray-200">Are you sure you want to delete the payment <strong>{itemToDelete?.paymentId}</strong>?</p>
                 <div className="flex justify-end space-x-2">
