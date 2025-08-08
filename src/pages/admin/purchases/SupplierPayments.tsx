@@ -11,22 +11,29 @@ import Modal from "../../../components/admin/Modal";
 import { toast } from "react-toastify";
 import PaginationWrapper from "../../../components/admin/PaginationWrapper";
 
-interface Purchase {
+interface SupplierPayment {
     id: string;
-    purchaseOrderId: string;
-    purchaseId: string;
-    purchaseDate: string;
-    billFrom: string;
-    billTo?: {
+    paymentId: string;
+    referenceNumber: string;
+    paymentDate: any;
+    amount: number;
+    paidAmount: number;
+    dueAmount: number;
+    notes: string;
+    supplier: {
         id: string;
         name: string;
         email: string;
         phone: string;
         profileImage: string;
     };
-    totalAmount: number;
-    payment_mode: string;
-    status: string;
+    purchase:{
+        id: string;
+        purchaseId: string;
+        totalAmount: number;
+        purchaseDate: string;
+    };
+    paymentMode: string;
 }
 
 interface PaginationData {
@@ -40,13 +47,13 @@ const SupplierPayments: FC = () => {
     const { token } = useSelector((state: RootState) => state.auth);
     const navigate = useNavigate();
 
-    // State for the list of purchase orders and pagination
-    const [purchases, setPurchases] = useState<Purchase[]>([]);
+    // State for the list of supplier payments and pagination
+    const [supplierPayments, setSupplierPayments] = useState<SupplierPayment[]>([]);
     const [pagination, setPagination] = useState<PaginationData>({ total: 0, page: 1, limit: 10, totalPages: 1 });
 
     // State for the delete confirmation modal
     const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
-    const [itemToDelete, setItemToDelete] = useState<Purchase | null>(null);
+    const [itemToDelete, setItemToDelete] = useState<SupplierPayment | null>(null);
 
     // Using URL search parameters to manage state for search, limit, and page
     const [searchParams, setSearchParams] = useSearchParams();
@@ -83,9 +90,9 @@ const SupplierPayments: FC = () => {
                 params: { search, limit, page }, 
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            console.log("response", response.data.data);
+            console.log("response", response.data.data.payments);
             
-            setPurchases(response.data.data ?? []);
+            setSupplierPayments(response.data.data.payments ?? []);
             setPagination(response.data.data.pagination ?? { total: 0, page: 1, limit: 10, totalPages: 1 });
         } catch (error) {
             console.error('Error fetching purchase orders:', error);
@@ -93,11 +100,11 @@ const SupplierPayments: FC = () => {
         }
     };
 
-    const handleEditClick = (item: Purchase) => {
+    const handleEditClick = (item: SupplierPayment) => {
         navigate(`/admin/purchase-orders/edit/${item.id}`);
     };
 
-    const handleDeleteClick = (item: Purchase) => {
+    const handleDeleteClick = (item: SupplierPayment) => {
         setItemToDelete(item);
         setShowDeleteModal(true);
     };
@@ -122,12 +129,12 @@ const SupplierPayments: FC = () => {
         {
             label: 'Edit',
             icon: <Edit size={14} />,
-            onClick: (item: Purchase) => { handleEditClick(item) }
+            onClick: (item: SupplierPayment) => { handleEditClick(item) }
         },
         {
             label: 'Delete',
             icon: <Trash2Icon size={14} />,
-            onClick: (item: Purchase) => { handleDeleteClick(item) }
+            onClick: (item: SupplierPayment) => { handleDeleteClick(item) }
         }
     ];
 
@@ -166,35 +173,34 @@ const SupplierPayments: FC = () => {
                 </select>
             </div>
 
-            <Table headers={["#", "Order Number", "Date", "Supplier", "Amount", "Payment Mode", "Status", "Action"]}>
-                {purchases && purchases.map((purchase, index) => (
+            <Table headers={["#", "Supplier", "Payment ID", "Payment Date", "Amount", "Payment Mode", "Action"]}>
+                {supplierPayments && supplierPayments.map((payment, index) => (
                     <TableRow
-                        key={purchase.id}
+                        key={payment.id}
                         index={(page - 1) * limit + index + 1} // Correct index for pagination
-                        row={purchase}
+                        row={payment}
                         columns={[
-                            purchase.purchaseId,
-                            purchase.purchaseDate,
                             <div className="flex items-center">
                                 <img
-                                    src={purchase.billTo?.profileImage}
-                                    alt={purchase.billTo?.name}
+                                    src={payment.supplier?.profileImage}
+                                    alt={payment.supplier?.name}
                                     className="h-10 w-10 rounded-full object-cover mr-3 border border-gray-300 dark:border-gray-700"
                                 />
                                 <div>
-                                    <span className="font-semibold text-gray-800 dark:text-white capitalize">{purchase.billTo?.name}</span>
-                                    <p className="text-gray-500 text-xs font-semibold">{purchase.billTo?.email}</p>
+                                    <span className="font-semibold text-gray-800 dark:text-white capitalize">{payment.supplier?.name}</span>
+                                    <p className="text-gray-500 text-xs font-semibold">{payment.supplier?.email}</p>
                                 </div>
                             </div>,
-                            '₹' + purchase.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-                            purchase.payment_mode ?? "CASH",
-                            purchase.status,
+                            payment.paymentId,
+                            payment.paymentDate,
+                            '₹' + payment.paidAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+                            payment.paymentMode ?? "CASH",
                         ]}
                         actions={tableActions}
                     />
                 ))}
 
-                {purchases.length === 0 && (
+                {supplierPayments.length === 0 && (
                     <tr>
                         <td colSpan={8} className="text-center py-4 text-gray-800 dark:text-white font-semibold">
                             No supplier payments found
@@ -218,10 +224,10 @@ const SupplierPayments: FC = () => {
             {/* Delete Confirmation Modal */}
             <Modal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} title="Confirm Deletion">
                 <p className="mb-4 text-gray-700 dark:text-gray-200">
-                    Are you sure you want to delete the purchase order <strong>{itemToDelete?.purchaseId}</strong>?
+                    Are you sure you want to delete the payment <strong>{itemToDelete?.paymentId}</strong>?
                 </p>
                 <div className="flex justify-end space-x-2">
-                    <button onClick={() => { setShowDeleteModal(false); setItemToDelete(null); }} className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white rounded">
+                    <button type="button" onClick={() => { setShowDeleteModal(false); setItemToDelete(null); }} className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white rounded cursor-pointer">
                         Cancel
                     </button>
                     <button onClick={confirmDelete} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded">
