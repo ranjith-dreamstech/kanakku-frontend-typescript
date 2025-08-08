@@ -1,8 +1,8 @@
 import React, { useEffect, useState, type FC } from "react";
-import { CirclePlusIcon, Edit, Trash2Icon } from "lucide-react";
+import { CirclePlusIcon, Edit, Trash2Icon, UploadCloud } from "lucide-react";
 import Table from "../../../components/admin/Tabls";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 import { useSelector } from "react-redux";
 import type { RootState } from "../../../store";
 import Constants from "../../../constants/api";
@@ -10,6 +10,12 @@ import TableRow from "../../../components/admin/TableRow";
 import Modal from "../../../components/admin/Modal";
 import { toast } from "react-toastify";
 import PaginationWrapper from "../../../components/admin/PaginationWrapper";
+import SearchableDropdown from "../../../components/admin/SearchableDropdown";
+import DateInput from "../../../components/admin/DateInput";
+import PaymentFormModal from "./PaymentFormModal";
+import PaymentModeBadge from "../../../components/admin/PaymentModeBadge";
+
+// --- INTERFACES ---
 
 interface SupplierPayment {
     id: string;
@@ -27,13 +33,14 @@ interface SupplierPayment {
         phone: string;
         profileImage: string;
     };
-    purchase:{
+    purchase: {
         id: string;
         purchaseId: string;
         totalAmount: number;
         purchaseDate: string;
     };
     paymentMode: string;
+    attachment: string | null;
 }
 
 interface PaginationData {
@@ -43,65 +50,99 @@ interface PaginationData {
     totalPages: number;
 }
 
+interface Purchase {
+    id: string;
+    purchaseId: string;
+    totalAmount: number;
+    vendor: {
+        id: string;
+    }
+}
+
+interface IPaymentMode {
+    id: string;
+    name: string;
+}
+
+// --- MAIN COMPONENT ---
+
 const SupplierPayments: FC = () => {
     const { token } = useSelector((state: RootState) => state.auth);
     const navigate = useNavigate();
 
-    // State for the list of supplier payments and pagination
+    // State for data and lists
     const [supplierPayments, setSupplierPayments] = useState<SupplierPayment[]>([]);
+    const [purchases, setPurchases] = useState<Purchase[]>([]);
+    const [paymentModes, setPaymentModes] = useState<IPaymentMode[]>([]);
     const [pagination, setPagination] = useState<PaginationData>({ total: 0, page: 1, limit: 10, totalPages: 1 });
 
-    // State for the delete confirmation modal
+    // State for modals and editing
+    const [isPaymentModalOpen, setIsPaymentModalOpen] = useState<boolean>(false);
+    const [isEditMode, setIsEditMode] = useState<boolean>(false);
+    const [editingPayment, setEditingPayment] = useState<SupplierPayment | null>(null);
     const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
     const [itemToDelete, setItemToDelete] = useState<SupplierPayment | null>(null);
 
-    // Using URL search parameters to manage state for search, limit, and page
+    // Search and pagination params from URL
     const [searchParams, setSearchParams] = useSearchParams();
     const search = searchParams.get('search') || '';
     const limit = Number(searchParams.get('limit') || 10);
     const page = Number(searchParams.get('page') || 1);
 
-    // Handlers for updating URL search parameters
-    const handleSearch = (keyword: string) => {
-        setSearchParams({ search: keyword, limit: String(limit), page: '1' });
-    };
+    // --- DATA FETCHING ---
 
-    const handlePageLengthChange = (newLimit: number) => {
-        setSearchParams({ search, limit: String(newLimit), page: '1' });
-    };
-
-    const handlePageChange = (newPage: number) => {
-        setSearchParams({ search, limit: String(limit), page: String(newPage) });
-    };
-
-    // Handler to navigate to the 'new purchase order' page
-    const handleNewPurchaseClick = () => {
-        navigate("/admin/purchase/new");
-    };
-
-    // Fetch purchases whenever search, limit, or page changes
     useEffect(() => {
-        fetchPurchases(search, limit, page);
+        fetchSupplierPayments(search, limit, page);
+        fetchPurchasesForDropdown();
+        fetchPaymentModes();
     }, [search, limit, page, token]);
 
-    const fetchPurchases = async (search?: string, limit?: number, page?: number) => {
+    const fetchPaymentModes = async () => {
+            try {
+                const response = await axios.get(Constants.GET_ALL_PAYMENT_MODES_URL, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                setPaymentModes(response.data.data);
+            } catch (error) {
+                console.error('Error fetching payment modes:', error);
+            }
+        }
+    const fetchSupplierPayments = async (search?: string, limit?: number, page?: number) => {
         try {
             const response = await axios.get(Constants.GET_SUPPLIER_PAYMENTS_URL, {
-                params: { search, limit, page }, 
+                params: { search, limit, page },
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            console.log("response", response.data.data.payments);
-            
             setSupplierPayments(response.data.data.payments ?? []);
             setPagination(response.data.data.pagination ?? { total: 0, page: 1, limit: 10, totalPages: 1 });
         } catch (error) {
-            console.error('Error fetching purchase orders:', error);
-            toast.error('Failed to fetch purchase orders.');
+            console.error('Error fetching supplier payments:', error);
+            toast.error('Failed to fetch supplier payments.');
         }
     };
 
+    const fetchPurchasesForDropdown = async () => {
+        try {
+            const response = await axios.get(Constants.GET_ALL_PENDING_PURCHASES_URL, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            setPurchases(response.data.data ?? []);
+        } catch (error) {
+            console.error('Error fetching purchases:', error);
+            toast.error('Failed to fetch purchases for dropdown.');
+        }
+    };
+
+    const handleNewPaymentClick = () => {
+        setIsEditMode(false);
+        setEditingPayment(null);
+        setIsPaymentModalOpen(true);
+    };
+
     const handleEditClick = (item: SupplierPayment) => {
-        navigate(`/admin/purchase-orders/edit/${item.id}`);
+        setIsEditMode(true);
+        setEditingPayment(item);
+        setIsPaymentModalOpen(true);
     };
 
     const handleDeleteClick = (item: SupplierPayment) => {
@@ -109,36 +150,39 @@ const SupplierPayments: FC = () => {
         setShowDeleteModal(true);
     };
 
+    const handlePaymentConfirm = () => {
+        setIsPaymentModalOpen(false);
+        fetchSupplierPayments(search, limit, page);
+        fetchPurchasesForDropdown();
+    };
+
     const confirmDelete = async () => {
         if (!itemToDelete) return;
         try {
-            await axios.delete(`${Constants.DELETE_PURCHASE_ORDER_URL}/${itemToDelete.id}`, {
+            // Assumes a DELETE endpoint exists for payments
+            await axios.delete(`${Constants.DELETE_SUPPLIER_PAYMENT_URL}/${itemToDelete.id}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            toast.success('Purchase order deleted successfully');
-            fetchPurchases(search, limit, page); 
+            toast.success('Payment deleted successfully');
+            fetchSupplierPayments(search, limit, page);
             setShowDeleteModal(false);
             setItemToDelete(null);
         } catch (error) {
-            console.error('Failed to delete purchase order:', error);
-            toast.error('Failed to delete purchase order.');
+            console.error('Failed to delete payment:', error);
+            toast.error('Failed to delete payment.');
         }
     };
 
+    // --- UI & TABLE SETUP ---
     const tableActions = [
-        {
-            label: 'Edit',
-            icon: <Edit size={14} />,
-            onClick: (item: SupplierPayment) => { handleEditClick(item) }
-        },
-        {
-            label: 'Delete',
-            icon: <Trash2Icon size={14} />,
-            onClick: (item: SupplierPayment) => { handleDeleteClick(item) }
-        }
+        { label: 'Edit', icon: <Edit size={14} />, onClick: handleEditClick },
+        { label: 'Delete', icon: <Trash2Icon size={14} />, onClick: handleDeleteClick }
     ];
 
-    // Calculate pagination display text
+    const handleSearch = (keyword: string) => setSearchParams({ search: keyword, limit: String(limit), page: '1' });
+    const handlePageLengthChange = (newLimit: number) => setSearchParams({ search, limit: String(newLimit), page: '1' });
+    const handlePageChange = (newPage: number) => setSearchParams({ search, limit: String(limit), page: String(newPage) });
+
     const from = (pagination.page - 1) * pagination.limit + 1;
     const to = Math.min(pagination.page * pagination.limit, pagination.total);
 
@@ -147,13 +191,13 @@ const SupplierPayments: FC = () => {
             <div className="flex justify-between items-center">
                 <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Supplier Payments</h1>
                 <button
-                    onClick={handleNewPurchaseClick}
+                    onClick={handleNewPaymentClick}
                     className="bg-purple-600 hover:bg-purple-700 text-white px-2 py-1 rounded-md shadow cursor-pointer flex items-center gap-2">
                     <CirclePlusIcon size={14} /> New Payment
                 </button>
             </div>
 
-            {/* Search Input & PageLength */}
+            {/* Search and Filter Section */}
             <div className="flex justify-between items-center">
                 <input
                     type="text"
@@ -173,70 +217,59 @@ const SupplierPayments: FC = () => {
                 </select>
             </div>
 
-            <Table headers={["#", "Supplier", "Payment ID", "Payment Date", "Amount", "Payment Mode", "Action"]}>
-                {supplierPayments && supplierPayments.map((payment, index) => (
+            {/* Payments Table */}
+            <Table headers={["#", "Supplier", "Payment ID", "Purchase ID", "Payment Date", "Amount", "Payment Mode", "Action"]}>
+                {supplierPayments.map((payment, index) => (
                     <TableRow
                         key={payment.id}
-                        index={(page - 1) * limit + index + 1} // Correct index for pagination
+                        index={from + index}
                         row={payment}
                         columns={[
                             <div className="flex items-center">
-                                <img
-                                    src={payment.supplier?.profileImage}
-                                    alt={payment.supplier?.name}
-                                    className="h-10 w-10 rounded-full object-cover mr-3 border border-gray-300 dark:border-gray-700"
-                                />
+                                <img src={payment.supplier?.profileImage} alt={payment.supplier?.name} className="h-10 w-10 rounded-full object-cover mr-3 border border-gray-300 dark:border-gray-700" />
                                 <div>
                                     <span className="font-semibold text-gray-800 dark:text-white capitalize">{payment.supplier?.name}</span>
                                     <p className="text-gray-500 text-xs font-semibold">{payment.supplier?.email}</p>
                                 </div>
                             </div>,
                             payment.paymentId,
+                            payment.purchase?.purchaseId ?? '-',
                             payment.paymentDate,
                             '₹' + payment.paidAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-                            payment.paymentMode ?? "CASH",
+                           <PaymentModeBadge mode={payment.paymentMode} />,
                         ]}
                         actions={tableActions}
                     />
                 ))}
-
                 {supplierPayments.length === 0 && (
-                    <tr>
-                        <td colSpan={8} className="text-center py-4 text-gray-800 dark:text-white font-semibold">
-                            No supplier payments found
-                        </td>
-                    </tr>
+                    <tr><td colSpan={7} className="text-center py-4 text-gray-800 dark:text-white font-semibold">No supplier payments found</td></tr>
                 )}
             </Table>
             
-            {/* Pagination Component */}
-            <PaginationWrapper
-                count={pagination.totalPages}
-                page={page}
-                from={from}
-                to={to}
-                total={pagination.total}
-                onChange={(e, newPage) => handlePageChange(newPage)}
-                paginationVariant="outlined"
-                paginationShape="rounded"
-            />
+            <PaginationWrapper count={pagination.totalPages} page={page} from={from} to={to} total={pagination.total} onChange={(e, newPage) => handlePageChange(newPage)} />
 
-            {/* Delete Confirmation Modal */}
+            {/* Modals */}
+            {isPaymentModalOpen && (
+                <PaymentFormModal
+                    isOpen={isPaymentModalOpen}
+                    onClose={() => setIsPaymentModalOpen(false)}
+                    onConfirm={handlePaymentConfirm}
+                    isEditMode={isEditMode}
+                    initialData={editingPayment}
+                    purchases={purchases}
+                    paymentModes={paymentModes}
+                />
+            )}
+            
             <Modal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} title="Confirm Deletion">
-                <p className="mb-4 text-gray-700 dark:text-gray-200">
-                    Are you sure you want to delete the payment <strong>{itemToDelete?.paymentId}</strong>?
-                </p>
+                <p className="mb-4 text-gray-700 dark:text-gray-200">Are you sure you want to delete the payment <strong>{itemToDelete?.paymentId}</strong>?</p>
                 <div className="flex justify-end space-x-2">
-                    <button type="button" onClick={() => { setShowDeleteModal(false); setItemToDelete(null); }} className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white rounded cursor-pointer">
-                        Cancel
-                    </button>
-                    <button onClick={confirmDelete} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded">
-                        Delete
-                    </button>
+                    <button type="button" onClick={() => { setShowDeleteModal(false); setItemToDelete(null); }} className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white rounded cursor-pointer">Cancel</button>
+                    <button onClick={confirmDelete} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded">Delete</button>
                 </div>
             </Modal>
         </div>
     );
-}
+};
 
 export default SupplierPayments;

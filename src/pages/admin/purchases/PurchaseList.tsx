@@ -11,6 +11,7 @@ import Modal from "../../../components/admin/Modal";
 import { toast } from "react-toastify";
 import PaginationWrapper from "../../../components/admin/PaginationWrapper";
 import StatusBadge from "../../../components/admin/StatusBadge";
+import PaymentModeBadge from "../../../components/admin/PaymentModeBadge";
 
 interface Purchase {
     id: string;
@@ -187,7 +188,7 @@ const PurchaseList: FC = () => {
                                 </div>
                             </div>,
                             '₹' + purchase.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-                            purchase.payment_mode ?? "CASH",
+                            <PaymentModeBadge mode={purchase.payment_mode || 'cash'} />,
                             <StatusBadge status={purchase.status} />,
                         ]}
                         actions={tableActions}
