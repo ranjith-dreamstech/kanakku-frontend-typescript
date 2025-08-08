@@ -87,6 +87,11 @@ const Constants = {
   CREATE_SUPPLIER_PAYMENT_URL: `${API_BASE_URL}/admin/supplierpayments`,
   UPDATE_SUPPLIER_PAYMENT_URL: `${API_BASE_URL}/admin/supplierpayments`,
   GET_ALL_PENDING_PURCHASES_URL: `${API_BASE_URL}/admin/purchases-pending`,
+  CREATE_NEW_CURRENCY_URL: `${API_BASE_URL}/admin/currency`,
+  GET_CURRENCIES_URL: `${API_BASE_URL}/admin/currency`,
+  UPDATE_CURRENCY_STATUS_URL: `${API_BASE_URL}/admin/currency`,
+  UPDATE_CURRENCY_URL: `${API_BASE_URL}/admin/currency`,
+  DELETE_CURRENCY_URL: `${API_BASE_URL}/admin/currency`,
 };
 
 export default Constants;

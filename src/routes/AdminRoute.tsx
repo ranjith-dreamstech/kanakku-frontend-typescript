@@ -24,6 +24,7 @@ import CreatePurchase from "../pages/admin/purchases/CreatePurchase";
 import SupplierPayments from "../pages/admin/purchases/SupplierPayments";
 import DebitNoteList from "../pages/admin/purchases/DebitNoteList";
 import CreateDebitNote from "../pages/admin/purchases/CreateDebitNote";
+import CurrencyList from "../pages/admin/settings/financeSettings/currencies/CurrencyList";
 
 const AdminRoute = () => {
     return (
@@ -55,6 +56,7 @@ const AdminRoute = () => {
                     <Route path="/settings/bank-accounts" element={<BankAccountList />} />
                     <Route path="/settings/tax-rates" element={<TaxRateList />} />
                     <Route path="/settings/tax-groups" element={<TaxGroups />} />
+                    <Route path="/settings/currencies" element={<CurrencyList />} />
 
                     {/* Purchase Module Routes */}
                     <Route path="/purchase-orders" element={<PurchaseOrderList />} />

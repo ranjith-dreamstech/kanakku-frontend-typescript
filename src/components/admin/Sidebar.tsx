@@ -106,6 +106,7 @@ const navItems: NavItemType[] = [
           { type: 'link', to: '/admin/settings/bank-accounts', title: 'Bank Accounts' },
           { type: 'link', to: '/admin/settings/tax-rates', title: 'Tax Rates' },
           { type: 'link', to: '/admin/settings/tax-groups', title: 'Tax Groups' },
+          { type: 'link', to: '/admin/settings/currencies', title: 'Currencies' },
         ],
       },
     ],
