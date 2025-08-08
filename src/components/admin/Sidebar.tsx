@@ -86,6 +86,7 @@ const navItems: NavItemType[] = [
         icon: <GlobeIcon size={16} />,
         children: [
           { type: 'link', to: '/admin/settings/company-settings', title: 'Company Settings' },
+          { type: 'link', to: '/admin/settings/localization', title: 'Localization Settings' },
         ],
       },
       {

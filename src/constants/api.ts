@@ -83,6 +83,8 @@ const Constants = {
   FETCH_ALL_PURCHASE_FOR_DEBIT_NOTE_URL: `${API_BASE_URL}/admin/purchases-minimal`,
   GET_PURCHASE_DETAILS_URL: `${API_BASE_URL}/admin/purchases`,
   CREATE_DEBIT_NOTE_URL: `${API_BASE_URL}/admin/debitnote`,
+  FETCH_FOR_DEBIT_NOTE_LIST_URL: `${API_BASE_URL}/admin/debitnote`,
+  DELETE_DEBIT_NOTE_URL: `${API_BASE_URL}/admin/debitnote`,
   DELETE_SUPPLIER_PAYMENT_URL: `${API_BASE_URL}/admin/supplierpayments`,
   CREATE_SUPPLIER_PAYMENT_URL: `${API_BASE_URL}/admin/supplierpayments`,
   UPDATE_SUPPLIER_PAYMENT_URL: `${API_BASE_URL}/admin/supplierpayments`,

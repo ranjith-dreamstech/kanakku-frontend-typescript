@@ -25,6 +25,7 @@ import SupplierPayments from "../pages/admin/purchases/SupplierPayments";
 import DebitNoteList from "../pages/admin/purchases/DebitNoteList";
 import CreateDebitNote from "../pages/admin/purchases/CreateDebitNote";
 import CurrencyList from "../pages/admin/settings/financeSettings/currencies/CurrencyList";
+import LocalizationSettings from "../pages/admin/settings/websiteSettings/LocalizationSettings";
 
 const AdminRoute = () => {
     return (
@@ -48,6 +49,7 @@ const AdminRoute = () => {
 
                     {/* Website Settings Routes */}
                     <Route path="/settings/company-settings" element={<CompanySettings />} />
+                    <Route path="/settings/localization" element={<LocalizationSettings />} />
 
                     {/* System Settings Routes */}
                     <Route path="/settings/signatures" element={<SignatureList />} />

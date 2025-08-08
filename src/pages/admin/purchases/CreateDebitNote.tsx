@@ -21,7 +21,7 @@ interface User {
     name: string;
 }
 
-interface PurchaseFormData {
+interface DebitNoteFormData {
     purchaseId?: string;
     userId: string;
     billFrom: string;
@@ -173,7 +173,7 @@ const CreateDebitNote: React.FC = () => {
     const [supplierDetails, setSupplierDetails] = useState<selectedSupplier | null>(null);
     const [paymentModes, setPaymentModes] = useState<IPaymentMode[]>([]);
     const [purchases, setPurchases] = useState<PurchaseOrder[]>([]);
-    const [purchaseFormData, setPurchaseFormData] = useState<PurchaseFormData>({
+    const [debitNoteFormData, setDebitNoteFormData] = useState<DebitNoteFormData>({
         purchaseId: '',
         userId: user?.id || '',
         billFrom: '',
@@ -228,12 +228,12 @@ const CreateDebitNote: React.FC = () => {
     }, []);
 
     useEffect(() => {
-        if (purchaseFormData.purchaseId) fetchPurchase();
-    }, [purchaseFormData.purchaseId]);
+        if (debitNoteFormData.purchaseId) fetchPurchase();
+    }, [debitNoteFormData.purchaseId]);
 
     const fetchPurchase = async () => {
         try {
-            const response = await axios.get(`${Constants.GET_PURCHASE_DETAILS_URL}/${purchaseFormData.purchaseId}`, {
+            const response = await axios.get(`${Constants.GET_PURCHASE_DETAILS_URL}/${debitNoteFormData.purchaseId}`, {
                 headers: { 'Authorization': `Bearer ${token}` },
             });
             
@@ -260,7 +260,7 @@ const CreateDebitNote: React.FC = () => {
                     });
                 }
 
-                setPurchaseFormData(prev => ({
+                setDebitNoteFormData(prev => ({
                     ...prev,
                     _id: data.id,
                     userId: user?.id || '',
@@ -374,8 +374,8 @@ const CreateDebitNote: React.FC = () => {
             const response = await axios.get(`${Constants.FETCH_COMPANY_SETTINGS_URL}/${user.id}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            //set billFrom to prev purchaseFormData
-            setPurchaseFormData(prev => ({ ...prev, billFrom: user.id }));
+            //set billFrom to prev debitNoteFormData
+            setDebitNoteFormData(prev => ({ ...prev, billFrom: user.id }));
             setCompanyDetails(response.data.data);
         } catch (error) {
             setCompanyDetails(null);
@@ -389,7 +389,7 @@ const CreateDebitNote: React.FC = () => {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             //set billTo to prev formData
-            setPurchaseFormData(prev => ({ ...prev, billTo: user.id }));
+            setDebitNoteFormData(prev => ({ ...prev, billTo: user.id }));
             setSupplierDetails(response.data.data);
         } catch (error) {
             setSupplierDetails(null);
@@ -405,7 +405,7 @@ const CreateDebitNote: React.FC = () => {
                         headers: { 'Authorization': `Bearer ${token}` }
                     });
                     const availableProducts = response.data.data.filter(
-                        (product: Product) => purchaseFormData.items.every((item: productItem) => item.id !== product.id)
+                        (product: Product) => debitNoteFormData.items.every((item: productItem) => item.id !== product.id)
                     );
                     setProducts(availableProducts);
                 } catch (error) {
@@ -422,8 +422,8 @@ const CreateDebitNote: React.FC = () => {
     }, [debouncedSearchTerm, token]);
 
     // --- ITEM & FORM HANDLERS ---
-    const handleFormChange = (field: keyof PurchaseFormData, value: any) => {
-        setPurchaseFormData(prev => ({ ...prev, [field]: value }));
+    const handleFormChange = (field: keyof DebitNoteFormData, value: any) => {
+        setDebitNoteFormData(prev => ({ ...prev, [field]: value }));
     };
 
     const handleProductChange = (product: Product) => {
@@ -452,11 +452,11 @@ const CreateDebitNote: React.FC = () => {
             discount_value: discountValue,
             amount: (sellingPrice * 1) - productDiscount + productTax,
         };
-        handleFormChange('items', [...purchaseFormData.items, newItem]);
+        handleFormChange('items', [...debitNoteFormData.items, newItem]);
     };
 
     const handleRemoveItem = (itemToRemove: productItem) => {
-        handleFormChange('items', purchaseFormData.items.filter(item => item.id !== itemToRemove.id));
+        handleFormChange('items', debitNoteFormData.items.filter(item => item.id !== itemToRemove.id));
     };
 
     const handleEditItem = (itemToEdit: productItem) => {
@@ -510,7 +510,7 @@ const CreateDebitNote: React.FC = () => {
 
     const handleUpdateItem = () => {
         if (!editingItem) return;
-        const updatedItems = purchaseFormData.items.map(item =>
+        const updatedItems = debitNoteFormData.items.map(item =>
             item.id === editingItem.id ? editingItem : item
         );
         handleFormChange('items', updatedItems);
@@ -530,7 +530,7 @@ const CreateDebitNote: React.FC = () => {
 
     // --- DYNAMIC CALCULATIONS ---
     const { subTotal, totalTax, totalDiscount, grandTotal } = useMemo(() => {
-        const totals = purchaseFormData.items.reduce((acc, item) => {
+        const totals = debitNoteFormData.items.reduce((acc, item) => {
             acc.subTotal += item.rate * item.qty;
             acc.totalDiscount += item.discount;
             acc.totalTax += item.tax;
@@ -539,9 +539,9 @@ const CreateDebitNote: React.FC = () => {
         let grand_total = totals.subTotal - totals.totalDiscount + totals.totalTax;
         console.log('totals', totals);
         
-        setPurchaseFormData(prev => ({ ...prev, subTotal: totals.subTotal, totalTax: totals.totalTax, totalDiscount: totals.totalDiscount, grandTotal: grand_total }));
+        setDebitNoteFormData(prev => ({ ...prev, subTotal: totals.subTotal, totalTax: totals.totalTax, totalDiscount: totals.totalDiscount, grandTotal: grand_total }));
         return { ...totals, grandTotal: grand_total };
-    }, [purchaseFormData.items]);
+    }, [debitNoteFormData.items]);
 
     const totalInWords = useMemo(() => {
         console.log("grandTotal", grandTotal);
@@ -551,8 +551,8 @@ const CreateDebitNote: React.FC = () => {
     }, [grandTotal]);
 
     const selectedManualSignatureImage = useMemo(() => {
-        return manualSignatures.find(sig => sig.id === purchaseFormData.signatureId)?.imageUrl || null;
-    }, [purchaseFormData.signatureId, manualSignatures]);
+        return manualSignatures.find(sig => sig.id === debitNoteFormData.signatureId)?.imageUrl || null;
+    }, [debitNoteFormData.signatureId, manualSignatures]);
 
 
     const fetchAdminUsers = async () => {
@@ -587,36 +587,36 @@ const CreateDebitNote: React.FC = () => {
         }
     };
 
-    const validatePurchaseOrderData = () => {
+    const validateDebitNoteData = () => {
         // Add your validation logic here
         const newErrors: { [key: string]: string } = {};
         //order date required
-        if (!purchaseFormData.debitNoteDate) newErrors.debitNoteDate = 'Order date is required.';
+        if (!debitNoteFormData.debitNoteDate) newErrors.debitNoteDate = 'Order date is required.';
         //status required
-        if (!purchaseFormData.status.trim()) newErrors.status = 'Status is required.';
+        if (!debitNoteFormData.status.trim()) newErrors.status = 'Status is required.';
         //billFrom required
-        if (!purchaseFormData.billFrom.trim()) newErrors.billFrom = 'Bill from is required.';
+        if (!debitNoteFormData.billFrom.trim()) newErrors.billFrom = 'Bill from is required.';
         //billTo required
-        if (!purchaseFormData.billTo.trim()) newErrors.billTo = 'Bill to is required.';
+        if (!debitNoteFormData.billTo.trim()) newErrors.billTo = 'Bill to is required.';
         //atleast 1 item required
-        if (purchaseFormData.items.length === 0) newErrors.items = 'At least one item is required.';
+        if (debitNoteFormData.items.length === 0) newErrors.items = 'At least one item is required.';
         //sign_type if manual then signatureId required
-        if (purchaseFormData.sign_type === 'digitalSignature' && !purchaseFormData.signatureId) newErrors.signatureId = 'Manual signature is required.';
+        if (debitNoteFormData.sign_type === 'digitalSignature' && !debitNoteFormData.signatureId) newErrors.signatureId = 'Manual signature is required.';
         //sign_type if esignature then signatureName required
-        if (purchaseFormData.sign_type === 'eSignature' && !purchaseFormData.signatureName.trim()) newErrors.signatureName = 'Esignature name is required.';
-        if (purchaseFormData.sign_type === 'eSignature' && !purchaseFormData.esignDataUrl) newErrors.esignDataUrl = 'Esignature is required.';
+        if (debitNoteFormData.sign_type === 'eSignature' && !debitNoteFormData.signatureName.trim()) newErrors.signatureName = 'Esignature name is required.';
+        if (debitNoteFormData.sign_type === 'eSignature' && !debitNoteFormData.esignDataUrl) newErrors.esignDataUrl = 'Esignature is required.';
 
         //if status paid then paymentDate, paymentMode and amount required open modal
-        if (purchaseFormData.status === 'paid' && (!purchaseFormData.sp_paymentDate || !purchaseFormData.sp_paymentMode || !purchaseFormData.sp_amount)) {
+        if (debitNoteFormData.status === 'paid' && (!debitNoteFormData.sp_paymentDate || !debitNoteFormData.sp_paymentMode || !debitNoteFormData.sp_amount)) {
             newErrors.status = 'Payment details are required.';
             setIsPaymentModalOpen(true);
         }
         setFormErrors(newErrors);
         return newErrors;
     }
-    const savePurchaseOrder = async (e: React.FormEvent) => {
+    const saveDebitNote = async (e: React.FormEvent) => {
         e.preventDefault();
-        const errors = validatePurchaseOrderData();
+        const errors = validateDebitNoteData();
 
         if (Object.keys(errors).length > 0) {
             const firstErrorField = Object.keys(errors)[0];
@@ -627,8 +627,8 @@ const CreateDebitNote: React.FC = () => {
 
         const formData = new FormData();
 
-        for (const [key, value] of Object.entries(purchaseFormData)) {
-            if (key === 'esignDataUrl' && purchaseFormData.sign_type === 'eSignature') {
+        for (const [key, value] of Object.entries(debitNoteFormData)) {
+            if (key === 'esignDataUrl' && debitNoteFormData.sign_type === 'eSignature') {
                 const file = await dataURLtoFile(value, 'signature.png');
                 if (file) {
                     formData.append('signatureImage', file);
@@ -657,8 +657,8 @@ const CreateDebitNote: React.FC = () => {
                 },
             });
 
-            toast.success('Purchase order saved successfully.');
-            navigate('/admin/purchases');
+            toast.success('Debit note created successfully.');
+            navigate('/admin/debit-notes');
         } catch (error: any) {
             if (error.response?.status !== 200 && error.response?.data?.errors) {
                 setFormErrors(error.response.data.errors);
@@ -704,14 +704,14 @@ const CreateDebitNote: React.FC = () => {
 
 
 
-    const handlePaymentConfirm = (paymentModalData: PurchaseFormData) => {
+    const handlePaymentConfirm = (paymentModalData: DebitNoteFormData) => {
         //set with previous data
-        setPurchaseFormData(prev => ({ ...prev, ...paymentModalData }));
+        setDebitNoteFormData(prev => ({ ...prev, ...paymentModalData }));
         setIsPaymentModalOpen(false);
     }
     return (
         <div className="p-4 md:p-6 bg-white-50 dark:bg-gray-50 dark:bg-gray-900 min-h-screen border border-gray-200 dark:border-gray-700 rounded">
-            <form onSubmit={savePurchaseOrder}>
+            <form onSubmit={saveDebitNote}>
                 <div className="max-w-7xl mx-auto space-y-6">
 
                     {/* Header */}
@@ -729,14 +729,14 @@ const CreateDebitNote: React.FC = () => {
                                 <SearchableDropdown
                                     options={purchases}
                                     placeholder='Select Purchase Order'
-                                    value={purchases.find(order => order.id === purchaseFormData.purchaseId) ?? null}
+                                    value={purchases.find(order => order.id === debitNoteFormData.purchaseId) ?? null}
                                     onChange={(e, value) => handleFormChange('purchaseId', (value as PurchaseOrder)?.id || null)}
                                 />
                             </div>
                             <div className="w-full mt-1">
                                 <DateInput
                                     label="Order Date"
-                                    value={purchaseFormData.debitNoteDate}
+                                    value={debitNoteFormData.debitNoteDate}
                                     onChange={(newDate) => handleFormChange('debitNoteDate', newDate)}
                                     isRequired
                                 />
@@ -749,12 +749,13 @@ const CreateDebitNote: React.FC = () => {
                                 <select
                                     name="status"
                                     onChange={(e) => handleFormChange('status', e.target.value)}
-                                    value={purchaseFormData.status}
+                                    value={debitNoteFormData.status}
                                     className="border border-gray-300 rounded-md px-4 py-2 w-full dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-600"
                                 >
                                     <option>Select</option>
                                     <option value="new">New</option>
                                     <option value="paid">Paid</option>
+                                    <option value="partially_paid">Partially Paid</option>
                                     <option value="pending">Pending</option>
                                     <option value="cancelled">Cancelled</option>
                                 </select>
@@ -874,7 +875,7 @@ const CreateDebitNote: React.FC = () => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {purchaseFormData.items.map((item) => (
+                                    {debitNoteFormData.items.map((item) => (
                                         <tr key={item.id} className="bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700">
                                             <td className="p-3 font-medium">{item.name}</td>
                                             <td className="p-3">{item.unit}</td>
@@ -893,7 +894,7 @@ const CreateDebitNote: React.FC = () => {
                                             </td>
                                         </tr>
                                     ))}
-                                    {purchaseFormData.items.length === 0 && (
+                                    {debitNoteFormData.items.length === 0 && (
                                         <tr className="bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200">
                                             <td className="p-3 font-medium text-center" colSpan={8}>
                                                 No Items Selected
@@ -1038,13 +1039,13 @@ const CreateDebitNote: React.FC = () => {
                         {activeInfoTab === 'notes' && (
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Additional Notes</label>
-                                <textarea value={purchaseFormData.notes} onChange={(e) => handleFormChange('notes', e.target.value)} rows={4} placeholder="Enter Notes" className="border border-gray-300 rounded-md px-4 py-2 w-full dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-600"></textarea>
+                                <textarea value={debitNoteFormData.notes} onChange={(e) => handleFormChange('notes', e.target.value)} rows={4} placeholder="Enter Notes" className="border border-gray-300 rounded-md px-4 py-2 w-full dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-600"></textarea>
                             </div>
                         )}
                         {activeInfoTab === 'termsAndCondition' && (
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Terms & Conditions</label>
-                                <textarea value={purchaseFormData.termsAndCondition} onChange={(e) => handleFormChange('termsAndCondition', e.target.value)} rows={4} placeholder="Enter Terms & Conditions" className="border border-gray-300 rounded-md px-4 py-2 w-full dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-600"></textarea>
+                                <textarea value={debitNoteFormData.termsAndCondition} onChange={(e) => handleFormChange('termsAndCondition', e.target.value)} rows={4} placeholder="Enter Terms & Conditions" className="border border-gray-300 rounded-md px-4 py-2 w-full dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-600"></textarea>
                             </div>
                         )}
                         {activeInfoTab === 'bank' && (
@@ -1056,7 +1057,7 @@ const CreateDebitNote: React.FC = () => {
                                     <SearchableDropdown
                                         options={paymentModes}
                                         placeholder="Select Payment Mode"
-                                        value={paymentModes.find((mode) => mode.id === purchaseFormData.paymentMode) || null}
+                                        value={paymentModes.find((mode) => mode.id === debitNoteFormData.paymentMode) || null}
                                         onChange={(e, value) => {
                                             const selectedMode = value as IPaymentMode;
                                             handleFormChange('paymentMode', selectedMode?.id || null);
@@ -1065,14 +1066,14 @@ const CreateDebitNote: React.FC = () => {
                                     />
                                 </div>
 
-                                {purchaseFormData.paymentModeSlug === 'cheque' && (
+                                {debitNoteFormData.paymentModeSlug === 'cheque' && (
                                     <div className="mt-2">
                                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                                             Check Number
                                         </label>
                                         <input
                                             type="text"
-                                            value={purchaseFormData.checkNumber}
+                                            value={debitNoteFormData.checkNumber}
                                             onChange={(e) => handleFormChange('checkNumber', e.target.value)}
                                             placeholder="Enter Check Number"
                                             className='border border-gray-300 rounded-md px-4 py-2 w-full dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-600'
@@ -1080,7 +1081,7 @@ const CreateDebitNote: React.FC = () => {
                                     </div>
                                 )}
 
-                                {purchaseFormData.paymentModeSlug === 'bank-deposit' && (
+                                {debitNoteFormData.paymentModeSlug === 'bank-deposit' && (
                                     <div className="mt-2">
                                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                                             Account
@@ -1088,7 +1089,7 @@ const CreateDebitNote: React.FC = () => {
                                         <SearchableDropdown
                                             options={bankAccounts}
                                             placeholder="Select Bank Account"
-                                            value={bankAccounts.find((acc) => acc.id === purchaseFormData.bank) || null}
+                                            value={bankAccounts.find((acc) => acc.id === debitNoteFormData.bank) || null}
                                             onChange={(e, value) => {
                                                 const selectedBank = value as IBankAccount;
                                                 handleFormChange('bank', selectedBank?.id || null);
@@ -1111,14 +1112,14 @@ const CreateDebitNote: React.FC = () => {
                         <p className="text-sm text-gray-500 dark:text-gray-400 capitalize">{totalInWords}</p>
 
                         <div className="flex items-center gap-4 pt-4">
-                            <div className="flex items-center"><input id="manual-sig" type="radio" name="signature" checked={purchaseFormData.sign_type === 'digitalSignature'} onChange={() => handleFormChange('sign_type', 'digitalSignature')} className="h-4 w-4 text-purple-600 cursor-pointer" /><label htmlFor="manual-sig" className="ml-2 block text-sm text-gray-700 dark:text-gray-300 cursor-pointer">Manual Signature</label></div>
-                            <div className="flex items-center"><input id="e-sig" type="radio" name="signature" checked={purchaseFormData.sign_type === 'eSignature'} onChange={() => handleFormChange('sign_type', 'eSignature')} className="h-4 w-4 text-purple-600 cursor-pointer" /><label htmlFor="e-sig" className="ml-2 block text-sm text-gray-700 dark:text-gray-300 cursor-pointer">eSignature</label></div>
+                            <div className="flex items-center"><input id="manual-sig" type="radio" name="signature" checked={debitNoteFormData.sign_type === 'digitalSignature'} onChange={() => handleFormChange('sign_type', 'digitalSignature')} className="h-4 w-4 text-purple-600 cursor-pointer" /><label htmlFor="manual-sig" className="ml-2 block text-sm text-gray-700 dark:text-gray-300 cursor-pointer">Manual Signature</label></div>
+                            <div className="flex items-center"><input id="e-sig" type="radio" name="signature" checked={debitNoteFormData.sign_type === 'eSignature'} onChange={() => handleFormChange('sign_type', 'eSignature')} className="h-4 w-4 text-purple-600 cursor-pointer" /><label htmlFor="e-sig" className="ml-2 block text-sm text-gray-700 dark:text-gray-300 cursor-pointer">eSignature</label></div>
                         </div>
 
-                        {purchaseFormData.sign_type === 'digitalSignature' ? (
+                        {debitNoteFormData.sign_type === 'digitalSignature' ? (
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Select Signature Name <span className="text-red-500">*</span></label>
-                                <select value={purchaseFormData.signatureId || ''} onChange={(e) => handleFormChange('signatureId', e.target.value)} name='signatureId' className="border border-gray-300 rounded-md px-4 py-2 w-full dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-600">
+                                <select value={debitNoteFormData.signatureId || ''} onChange={(e) => handleFormChange('signatureId', e.target.value)} name='signatureId' className="border border-gray-300 rounded-md px-4 py-2 w-full dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-600">
                                     <option value="" disabled>Select a signature</option>
                                     {manualSignatures.map(sig => <option key={sig.id} value={sig.id}>{sig.name}</option>)}
                                 </select>
@@ -1131,11 +1132,11 @@ const CreateDebitNote: React.FC = () => {
                         ) : (
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Signature Name <span className="text-red-500">*</span></label>
-                                <input name='signatureName' type="text" value={purchaseFormData.signatureName} onChange={e => handleFormChange('signatureName', e.target.value)} placeholder="Enter Signature Name" className="border border-gray-300 rounded-md px-4 py-2 w-full dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-600" />
+                                <input name='signatureName' type="text" value={debitNoteFormData.signatureName} onChange={e => handleFormChange('signatureName', e.target.value)} placeholder="Enter Signature Name" className="border border-gray-300 rounded-md px-4 py-2 w-full dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-600" />
                                 {formErrors?.signatureName && <p className="text-red-500 text-xs mt-1">{formErrors.signatureName}</p>}
                                 <p className="mt-2 text-sm font-medium text-gray-700 dark:text-gray-300">Draw your eSignature</p>
                                 <div className="mt-2 h-20 w-48 bg-gray-100 dark:bg-gray-700 rounded-md flex items-center justify-center cursor-pointer border-2 border-dashed border-gray-400" onClick={() => setSignatureModalOpen(true)}>
-                                    {purchaseFormData.esignDataUrl ? <img src={purchaseFormData.esignDataUrl} alt="Drawn Signature" className="max-h-full max-w-full" /> : <div className="text-center text-gray-500"><Edit3 size={20} className="mx-auto mb-1" /><span className="text-xs">Draw Signature</span></div>}
+                                    {debitNoteFormData.esignDataUrl ? <img src={debitNoteFormData.esignDataUrl} alt="Drawn Signature" className="max-h-full max-w-full" /> : <div className="text-center text-gray-500"><Edit3 size={20} className="mx-auto mb-1" /><span className="text-xs">Draw Signature</span></div>}
                                 </div>
                                 {formErrors?.esignDataUrl && <p className="text-red-500 text-xs mt-1">{formErrors.esignDataUrl}</p>}
                             </div>

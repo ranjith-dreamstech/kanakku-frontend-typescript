@@ -11,23 +11,44 @@ import Modal from "../../../components/admin/Modal";
 import { toast } from "react-toastify";
 import PaginationWrapper from "../../../components/admin/PaginationWrapper";
 import StatusBadge from "../../../components/admin/StatusBadge";
+import PaymentModeBadge from "../../../components/admin/PaymentModeBadge";
+import DeleteConfirmationModal from "../../../components/admin/DeleteConfirmationModal";
 
-interface Purchase {
+interface DebitNoteList {
     id: string;
-    purchaseOrderId: string;
-    purchaseId: string;
-    purchaseDate: string;
-    billFrom: string;
-    billTo?: {
+    debitNoteId: string;
+    referenceNo: string;
+    vendor: {
         id: string;
         name: string;
         email: string;
         phone: string;
-        profileImage: string;
     };
-    totalAmount: number;
-    payment_mode: string;
+    purchase: {
+        id: string;
+        purchaseId: string;
+        purchaseDate: string;
+        totalAmount: number;
+    };
+    debitNoteDate: string;
     status: string;
+    totalAmount: number;
+    paidAmount: number;
+    balanceAmount: number;
+    sign_type: string;
+    signatureName: string | null;
+    signatureImage: string | null;
+    notes: string;
+    createdBy: {
+        id: string;
+        name: string;
+    };
+    approvedBy?: {
+        id: string;
+        name: string;
+    };
+    createdAt: string;
+    updatedAt: string;
 }
 
 interface PaginationData {
@@ -42,12 +63,12 @@ const DebitNoteList: FC = () => {
     const navigate = useNavigate();
 
     // State for the list of purchase orders and pagination
-    const [purchases, setPurchases] = useState<Purchase[]>([]);
+    const [debitNotes, setDebitNotes] = useState<DebitNoteList[]>([]);
     const [pagination, setPagination] = useState<PaginationData>({ total: 0, page: 1, limit: 10, totalPages: 1 });
 
     // State for the delete confirmation modal
     const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
-    const [itemToDelete, setItemToDelete] = useState<Purchase | null>(null);
+    const [itemToDelete, setItemToDelete] = useState<DebitNoteList | null>(null);
 
     // Using URL search parameters to manage state for search, limit, and page
     const [searchParams, setSearchParams] = useSearchParams();
@@ -73,19 +94,18 @@ const DebitNoteList: FC = () => {
         navigate("/admin/debit-notes/new");
     };
 
-    // Fetch purchases whenever search, limit, or page changes
+    // Fetch debitNotes whenever search, limit, or page changes
     useEffect(() => {
-        fetchPurchases(search, limit, page);
+        fetchDebitNotes(search, limit, page);
     }, [search, limit, page, token]);
 
-    const fetchPurchases = async (search?: string, limit?: number, page?: number) => {
+    const fetchDebitNotes = async (search?: string, limit?: number, page?: number) => {
         try {
-            const response = await axios.get(Constants.GET_PURCHASE_URL, {
+            const response = await axios.get(Constants.FETCH_FOR_DEBIT_NOTE_LIST_URL, {
                 params: { search, limit, page }, 
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            
-            setPurchases(response.data.data?.purchases ?? []);
+            setDebitNotes(response.data.data?.debitNotes ?? []);
             setPagination(response.data.data.pagination ?? { total: 0, page: 1, limit: 10, totalPages: 1 });
         } catch (error) {
             console.error('Error fetching purchase orders:', error);
@@ -97,7 +117,7 @@ const DebitNoteList: FC = () => {
         navigate(`/admin/purchase-orders/edit/${item.id}`);
     };
 
-    const handleDeleteClick = (item: Purchase) => {
+    const handleDeleteClick = (item: DebitNoteList) => {
         setItemToDelete(item);
         setShowDeleteModal(true);
     };
@@ -105,16 +125,16 @@ const DebitNoteList: FC = () => {
     const confirmDelete = async () => {
         if (!itemToDelete) return;
         try {
-            await axios.delete(`${Constants.DELETE_PURCHASE_ORDER_URL}/${itemToDelete.id}`, {
+            await axios.delete(`${Constants.DELETE_DEBIT_NOTE_URL}/${itemToDelete.id}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            toast.success('Purchase order deleted successfully');
-            fetchPurchases(search, limit, page); 
+            toast.success('Debit note deleted successfully');
+            fetchDebitNotes(search, limit, page); 
             setShowDeleteModal(false);
             setItemToDelete(null);
         } catch (error) {
-            console.error('Failed to delete purchase order:', error);
-            toast.error('Failed to delete purchase order.');
+            console.error('Failed to delete debit note:', error);
+            toast.error('Failed to delete debit note.');
         }
     };
 
@@ -127,7 +147,7 @@ const DebitNoteList: FC = () => {
         {
             label: 'Delete',
             icon: <Trash2Icon size={14} />,
-            onClick: (item: Purchase) => { handleDeleteClick(item) }
+            onClick: (item: DebitNoteList) => { handleDeleteClick(item) }
         }
     ];
 
@@ -166,38 +186,39 @@ const DebitNoteList: FC = () => {
                 </select>
             </div>
 
-            <Table headers={["#", "Purchase Number", "Date", "Supplier", "Amount", "Payment Mode", "Status", "Action"]}>
-                {purchases && purchases.map((purchase, index) => (
+            <Table headers={["#", "Debit Note ID","Purchase ID", "Date", "Supplier", "Amount", "Payment Mode", "Status", "Action"]}>
+                {debitNotes && debitNotes.map((debitNote, index) => (
                     <TableRow
-                        key={purchase.id}
+                        key={debitNote.id}
                         index={(page - 1) * limit + index + 1} // Correct index for pagination
-                        row={purchase}
+                        row={debitNote}
                         columns={[
-                            purchase.purchaseId,
-                            purchase.purchaseDate,
+                            debitNote.debitNoteId,
+                            debitNote.purchase?.purchaseId || "",
+                            debitNote.debitNoteDate,
                             <div className="flex items-center">
                                 <img
-                                    src={purchase.billTo?.profileImage}
-                                    alt={purchase.billTo?.name}
+                                    src={debitNote.vendor.profileImage}
+                                    alt={debitNote.vendor.name}
                                     className="h-10 w-10 rounded-full object-cover mr-3 border border-gray-300 dark:border-gray-700"
                                 />
                                 <div>
-                                    <span className="font-semibold text-gray-800 dark:text-white capitalize">{purchase.billTo?.name}</span>
-                                    <p className="text-gray-500 text-xs font-semibold">{purchase.billTo?.email}</p>
+                                    <span className="font-semibold text-gray-800 dark:text-white capitalize">{debitNote.vendor.name || ""}</span>
+                                    <p className="text-gray-500 text-xs font-semibold">{debitNote.vendor?.email || ""}</p>
                                 </div>
                             </div>,
-                            '₹' + purchase.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-                            purchase.payment_mode ?? "CASH",
-                            <StatusBadge status={purchase.status} />,
+                            '₹' + debitNote.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+                            <PaymentModeBadge mode={debitNote.payment_mode ?? "CASH"} />,
+                            <StatusBadge status={debitNote.status} />,
                         ]}
                         actions={tableActions}
                     />
                 ))}
 
-                {purchases.length === 0 && (
+                {debitNotes.length === 0 && (
                     <tr>
                         <td colSpan={8} className="text-center py-4 text-gray-800 dark:text-white font-semibold">
-                            No purchase orders found
+                            No debit notes found
                         </td>
                     </tr>
                 )}
@@ -216,19 +237,15 @@ const DebitNoteList: FC = () => {
             />
 
             {/* Delete Confirmation Modal */}
-            <Modal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} title="Confirm Deletion">
-                <p className="mb-4 text-gray-700 dark:text-gray-200">
-                    Are you sure you want to delete the purchase order <strong>{itemToDelete?.purchaseId}</strong>?
-                </p>
-                <div className="flex justify-end space-x-2">
-                    <button onClick={() => { setShowDeleteModal(false); setItemToDelete(null); }} className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white rounded">
-                        Cancel
-                    </button>
-                    <button onClick={confirmDelete} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded">
-                        Delete
-                    </button>
-                </div>
-            </Modal>
+            
+            <DeleteConfirmationModal 
+                isOpen={showDeleteModal} 
+                onClose={() => setShowDeleteModal(false)} 
+                onConfirm={confirmDelete} 
+                title="Confirm Deletion"
+                message="Are you sure you want to delete this debit note?"
+                >
+            </DeleteConfirmationModal>
         </div>
     );
 }
