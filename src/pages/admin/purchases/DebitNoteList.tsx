@@ -30,6 +30,11 @@ interface DebitNoteList {
         purchaseDate: string;
         totalAmount: number;
     };
+    paymentMode?:{
+        id: string;
+        name: string;
+        slug: string;
+    };
     debitNoteDate: string;
     status: string;
     totalAmount: number;
@@ -208,7 +213,7 @@ const DebitNoteList: FC = () => {
                                 </div>
                             </div>,
                             '₹' + debitNote.totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
-                            <PaymentModeBadge mode={debitNote.payment_mode ?? "CASH"} />,
+                            <PaymentModeBadge mode={debitNote.paymentMode?.name ?? "NA"} />,
                             <StatusBadge status={debitNote.status} />,
                         ]}
                         actions={tableActions}

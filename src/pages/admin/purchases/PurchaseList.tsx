@@ -12,6 +12,7 @@ import { toast } from "react-toastify";
 import PaginationWrapper from "../../../components/admin/PaginationWrapper";
 import StatusBadge from "../../../components/admin/StatusBadge";
 import PaymentModeBadge from "../../../components/admin/PaymentModeBadge";
+import DeleteConfirmationModal from "../../../components/admin/DeleteConfirmationModal";
 
 interface Purchase {
     id: string;
@@ -106,16 +107,16 @@ const PurchaseList: FC = () => {
     const confirmDelete = async () => {
         if (!itemToDelete) return;
         try {
-            await axios.delete(`${Constants.DELETE_PURCHASE_ORDER_URL}/${itemToDelete.id}`, {
+            await axios.delete(`${Constants.DELETE_PURCHASE_URL}/${itemToDelete.id}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            toast.success('Purchase order deleted successfully');
+            toast.success('Purchase deleted successfully');
             fetchPurchases(search, limit, page); 
             setShowDeleteModal(false);
             setItemToDelete(null);
         } catch (error) {
-            console.error('Failed to delete purchase order:', error);
-            toast.error('Failed to delete purchase order.');
+            console.error('Failed to delete purchase:', error);
+            toast.error('Failed to delete purchase.');
         }
     };
 
@@ -217,19 +218,14 @@ const PurchaseList: FC = () => {
             />
 
             {/* Delete Confirmation Modal */}
-            <Modal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} title="Confirm Deletion">
-                <p className="mb-4 text-gray-700 dark:text-gray-200">
-                    Are you sure you want to delete the purchase order <strong>{itemToDelete?.purchaseId}</strong>?
-                </p>
-                <div className="flex justify-end space-x-2">
-                    <button onClick={() => { setShowDeleteModal(false); setItemToDelete(null); }} className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white rounded">
-                        Cancel
-                    </button>
-                    <button onClick={confirmDelete} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded">
-                        Delete
-                    </button>
-                </div>
-            </Modal>
+            <DeleteConfirmationModal
+                isOpen={showDeleteModal}
+                onClose={() => setShowDeleteModal(false)}
+                onConfirm={confirmDelete}
+                title="Confirm Deletion"
+                message={`Are you sure you want to delete the purchase ${itemToDelete?.purchaseId}?`}
+            >
+            </DeleteConfirmationModal>
         </div>
     );
 }

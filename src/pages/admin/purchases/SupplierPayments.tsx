@@ -14,6 +14,7 @@ import SearchableDropdown from "../../../components/admin/SearchableDropdown";
 import DateInput from "../../../components/admin/DateInput";
 import PaymentFormModal from "./PaymentFormModal";
 import PaymentModeBadge from "../../../components/admin/PaymentModeBadge";
+import DeleteConfirmationModal from "../../../components/admin/DeleteConfirmationModal";
 
 // --- INTERFACES ---
 
@@ -262,13 +263,15 @@ const SupplierPayments: FC = () => {
                 />
             )}
 
-            <Modal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} title="Confirm Deletion">
-                <p className="mb-4 text-gray-700 dark:text-gray-200">Are you sure you want to delete the payment <strong>{itemToDelete?.paymentId}</strong>?</p>
-                <div className="flex justify-end space-x-2">
-                    <button type="button" onClick={() => { setShowDeleteModal(false); setItemToDelete(null); }} className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white rounded cursor-pointer">Cancel</button>
-                    <button onClick={confirmDelete} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded">Delete</button>
-                </div>
-            </Modal>
+            <DeleteConfirmationModal
+                isOpen={showDeleteModal}
+                onClose={() => setShowDeleteModal(false)}
+                onConfirm={confirmDelete}
+                title="Confirm Deletion"
+                message="Are you sure you want to delete the payment?"
+            >
+
+            </DeleteConfirmationModal>
         </div>
     );
 };

@@ -12,6 +12,7 @@ import { toast } from "react-toastify";
 import PaginationWrapper from "../../../components/admin/PaginationWrapper";
 import StatusBadge from "../../../components/admin/StatusBadge";
 import PaymentModeBadge from "../../../components/admin/PaymentModeBadge";
+import DeleteConfirmationModal from "../../../components/admin/DeleteConfirmationModal";
 
 interface PurchaseOrder {
     id: string;
@@ -216,20 +217,14 @@ const PurchaseOrderList: FC = () => {
                 paginationShape="rounded"
             />
 
-            {/* Delete Confirmation Modal */}
-            <Modal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} title="Confirm Deletion">
-                <p className="mb-4 text-gray-700 dark:text-gray-200">
-                    Are you sure you want to delete the purchase order <strong>{itemToDelete?.purchaseOrderId}</strong>?
-                </p>
-                <div className="flex justify-end space-x-2">
-                    <button onClick={() => { setShowDeleteModal(false); setItemToDelete(null); }} className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white rounded">
-                        Cancel
-                    </button>
-                    <button onClick={confirmDelete} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded">
-                        Delete
-                    </button>
-                </div>
-            </Modal>
+            <DeleteConfirmationModal
+                isOpen={showDeleteModal}
+                onClose={() => setShowDeleteModal(false)}
+                onConfirm={confirmDelete}
+                title="Confirm Deletion"
+                message={`Are you sure you want to delete the purchase order ${itemToDelete?.purchaseOrderId}? This action cannot be undone.`}
+            >
+            </DeleteConfirmationModal>
         </div>
     );
 }
