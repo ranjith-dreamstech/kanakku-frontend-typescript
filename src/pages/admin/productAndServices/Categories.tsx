@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import type { FC, ChangeEvent, FormEvent } from "react";
 import Constants from "../../../constants/api";
 import axios, { AxiosError } from "axios";
-import Table from "../../../components/admin/Tabls";
+import Table from "../../../components/admin/Table";
 import PaginationWrapper from "../../../components/admin/PaginationWrapper";
 import { EditIcon, TrashIcon, MoreVertical, Upload } from "lucide-react";
 import { toast } from "react-toastify";

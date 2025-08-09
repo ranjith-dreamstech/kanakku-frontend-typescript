@@ -1,4 +1,4 @@
-import React, { FC, useState, useEffect } from "react";
+import React, { type FC, useState, useEffect } from "react";
 import { useSelector } from "react-redux";
 import { useSearchParams } from "react-router-dom";
 import axios, { AxiosError } from "axios";
@@ -6,12 +6,12 @@ import { toast } from "react-toastify";
 import { Edit, Trash2Icon, CirclePlusIcon } from "lucide-react";
 
 import Modal from "@components/admin/Modal";
-import Table from "@components/admin/Tabls";
+import Table from "@components/admin/Table";
 import TableRow from "@components/admin/TableRow";
 import Switch from "@components/admin/Switch";
 import PaginationWrapper from "@components/admin/PaginationWrapper";
 import Constants from "@constants/api";
-import type { RootState } from "@store";
+import type { RootState } from "@store/index";
 
 
 // Interface for the form data

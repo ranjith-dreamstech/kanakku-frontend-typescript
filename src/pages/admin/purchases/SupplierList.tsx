@@ -1,18 +1,17 @@
-import React, { useEffect, useState, type FC } from "react";
-import Modal from "../../../components/admin/Modal";
-import { CirclePlusIcon, Edit, Image, Trash2Icon, X } from "lucide-react";
-import RowRadioButtonsGroup from "../../../components/admin/RowRadioButtonsGroup";
-import Constants from "../../../constants/api";
-import axios, { AxiosError } from "axios";
-import { toast } from "react-toastify";
-import { useSelector } from "react-redux";
-import type { RootState } from "../../../store";
-import Table from "../../../components/admin/Tabls";
-import TableRow from "../../../components/admin/TableRow";
-import { useSearchParams } from "react-router-dom";
-import Pagination from "@mui/material/Pagination";
-import PaginationWrapper from "../../../components/admin/PaginationWrapper";
-import DeleteConfirmationModal from "../../../components/admin/DeleteConfirmationModal";
+import React, { useEffect, useState, type FC } from 'react';
+import Modal from '@components/admin/Modal';
+import { CirclePlusIcon, Edit, Image, Trash2Icon, X } from 'lucide-react';
+import RowRadioButtonsGroup from '@components/admin/RowRadioButtonsGroup';
+import Constants from '@constants/api';
+import axios, { AxiosError } from 'axios';
+import { toast } from 'react-toastify';
+import { useSelector } from 'react-redux';
+import type { RootState } from '@store/index';
+import Table from '@components/admin/Table';
+import TableRow from '@components/admin/TableRow';
+import { useSearchParams } from 'react-router-dom';
+import PaginationWrapper from '@components/admin/PaginationWrapper';
+import DeleteConfirmationModal from '@components/admin/DeleteConfirmationModal';
 
 interface SupplierFormData {
     id?: string;

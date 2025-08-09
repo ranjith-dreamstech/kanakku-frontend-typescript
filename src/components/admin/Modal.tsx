@@ -47,7 +47,7 @@ const Modal = ({ isOpen, onClose, title, children, size = '2xl' }: ModalProps) =
         </div>
 
         {/* Body */}
-        <div className="p-2">{children}</div>
+        <div className="p-4">{children}</div>
       </div>
     </div>
   </>

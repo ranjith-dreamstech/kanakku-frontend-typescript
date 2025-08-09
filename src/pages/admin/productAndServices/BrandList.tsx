@@ -1,15 +1,15 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import type { FC, ChangeEvent, FormEvent } from "react";
-import Constants from "../../../constants/api";
+import Constants from "@constants/api";
 import axios from "axios";
-import Table from "../../../components/admin/Tabls";
-import PaginationWrapper from "../../../components/admin/PaginationWrapper";
+import Table from "@components/admin/Table";
+import PaginationWrapper from "@components/admin/PaginationWrapper";
 import { EditIcon, TrashIcon, MoreVertical, Upload } from "lucide-react";
 import { toast } from "react-toastify";
-import Modal from "../../../components/admin/Modal";
+import Modal from "@components/admin/Modal";
 import { useSelector } from "react-redux";
-import type { RootState } from "../../../store";
+import type { RootState } from "@store/index"
 
 // Interface for the brand data
 interface Brand {

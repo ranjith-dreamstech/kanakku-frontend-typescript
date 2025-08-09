@@ -1,9 +1,9 @@
 import type React from "react";
 import { useState, useEffect } from "react";
-import Modal from "../../../components/admin/Modal";
+import Modal from "@components/admin/Modal";
 import { UploadCloud } from "lucide-react";
-import SearchableDropdown from "../../../components/admin/SearchableDropdown";
-import DateInput from "../../../components/admin/DateInput";
+import SearchableDropdown from "@components/admin/SearchableDropdown";
+import DateInput from "@components/admin/DateInput";
 
 // Props for the modal component
 interface PaymentModalProps {

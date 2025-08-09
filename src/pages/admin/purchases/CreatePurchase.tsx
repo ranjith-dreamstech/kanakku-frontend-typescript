@@ -1,18 +1,18 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { PlusCircle, Edit, Trash2, Edit3 } from 'lucide-react';
-import DateInput from '../../../components/admin/DateInput';
+import DateInput from '@components/admin/DateInput';
 import axios from 'axios';
-import Constants from '../../../constants/api';
+import Constants from '@constants/api';
 import { useSelector } from 'react-redux';
-import type { RootState } from '../../../store';
-import SearchableDropdown from '../../../components/admin/SearchableDropdown';
-import { useDebounce } from '../../../hooks/useDebounce';
-import Modal from '../../../components/admin/Modal';
+import type { RootState } from '@store/index';
+import SearchableDropdown from '@components/admin/SearchableDropdown';
+import { useDebounce } from '@hooks/useDebounce';
+import Modal from '@components/admin/Modal';
 import SignatureCanvas from 'react-signature-canvas';
 import { toWords } from 'number-to-words';
 import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
-import PaymentModal from './PaymentModal';
+import PaymentModal from '@pages/admin/purchases/PaymentModal';
 
 // --- INTERFACES ---
 

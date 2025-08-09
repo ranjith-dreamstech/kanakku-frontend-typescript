@@ -1,20 +1,17 @@
-import React, { useEffect, useState, type FC } from "react";
-import { CirclePlusIcon, Edit, Trash2Icon, UploadCloud } from "lucide-react";
-import Table from "../../../components/admin/Tabls";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import axios, { AxiosError } from "axios";
-import { useSelector } from "react-redux";
-import type { RootState } from "../../../store";
-import Constants from "../../../constants/api";
-import TableRow from "../../../components/admin/TableRow";
-import Modal from "../../../components/admin/Modal";
-import { toast } from "react-toastify";
-import PaginationWrapper from "../../../components/admin/PaginationWrapper";
-import SearchableDropdown from "../../../components/admin/SearchableDropdown";
-import DateInput from "../../../components/admin/DateInput";
-import PaymentFormModal from "./PaymentFormModal";
-import PaymentModeBadge from "../../../components/admin/PaymentModeBadge";
-import DeleteConfirmationModal from "../../../components/admin/DeleteConfirmationModal";
+import React, { useEffect, useState, type FC } from 'react';
+import { CirclePlusIcon, Trash2Icon} from 'lucide-react';
+import Table from '@components/admin/Table';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import axios from 'axios';
+import { useSelector } from 'react-redux';
+import type { RootState } from '@store/index';
+import Constants from '@constants/api';
+import TableRow from '@components/admin/TableRow';
+import { toast } from 'react-toastify';
+import PaginationWrapper from '@components/admin/PaginationWrapper';
+import PaymentFormModal from '@pages/admin/purchases/PaymentFormModal';
+import PaymentModeBadge from '@components/admin/PaymentModeBadge';
+import DeleteConfirmationModal from '@components/admin/DeleteConfirmationModal';
 
 // --- INTERFACES ---
 

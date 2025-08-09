@@ -1,18 +1,17 @@
 import React, { useEffect, useState, type FC } from "react";
 import { CirclePlusIcon, Edit, Trash2Icon } from "lucide-react";
-import Table from "../../../components/admin/Tabls";
+import Table from "@components/admin/Table";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import axios from "axios";
 import { useSelector } from "react-redux";
-import type { RootState } from "../../../store";
-import Constants from "../../../constants/api";
-import TableRow from "../../../components/admin/TableRow";
-import Modal from "../../../components/admin/Modal";
+import type { RootState } from "@store/index";
+import Constants from "@constants/api";
+import TableRow from "@components/admin/TableRow";
 import { toast } from "react-toastify";
-import PaginationWrapper from "../../../components/admin/PaginationWrapper";
-import StatusBadge from "../../../components/admin/StatusBadge";
-import PaymentModeBadge from "../../../components/admin/PaymentModeBadge";
-import DeleteConfirmationModal from "../../../components/admin/DeleteConfirmationModal";
+import PaginationWrapper from "@components/admin/PaginationWrapper";
+import StatusBadge from "@components/admin/StatusBadge";
+import PaymentModeBadge from "@components/admin/PaymentModeBadge";
+import DeleteConfirmationModal from "@components/admin/DeleteConfirmationModal";
 
 interface Purchase {
     id: string;

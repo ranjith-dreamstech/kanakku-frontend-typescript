@@ -1,31 +1,33 @@
 import { Route, Routes } from "react-router-dom";
-import AdminLogin from "../pages/admin/auth/AdminLogin";
-import AdminDashboard from "../pages/admin/AdminDashboard";
+import AdminLogin from "@pages/admin/auth/AdminLogin";
+import AdminDashboard from "@pages/admin/AdminDashboard";
 import ProtectedRoute from "./ProtectedRoute";
-import AdminLayout from "../components/admin/layouts/AdminLayout";
-import UnitList from "../pages/admin/productAndServices/UnitList";
-import BrandList from "../pages/admin/productAndServices/BrandList";
-import CategoryList from "../pages/admin/productAndServices/Categories";
-import ProductList from "../pages/admin/productAndServices/ProductList";
-import AddProduct from "../pages/admin/productAndServices/AddProduct";
-import EditProduct from "../pages/admin/productAndServices/EditProduct";
-import TaxRateList from "../pages/admin/settings/TaxRates";
-import TaxGroups from "../pages/admin/settings/TaxGroups";
-import AccountSettings from "../pages/admin/settings/AccountSettings";
-import SupplierList from "../pages/admin/purchases/SupplierList";
-import SignatureList from "../pages/admin/settings/systemSettings/SignatureList";
-import PurchaseOrderList from "../pages/admin/purchases/PurchaseOrderList";
-import CreatePurchaseOrder from "../pages/admin/purchases/CreatePurchaseOrder";
-import BankAccountList from "../pages/admin/settings/financeSettings/BankAccountList";
-import CompanySettings from "../pages/admin/settings/websiteSettings/CompanySettings";
-import EditPurchaseOrder from "../pages/admin/purchases/EditPurchaseOrder";
-import PurchaseList from "../pages/admin/purchases/PurchaseList";
-import CreatePurchase from "../pages/admin/purchases/CreatePurchase";
-import SupplierPayments from "../pages/admin/purchases/SupplierPayments";
-import DebitNoteList from "../pages/admin/purchases/DebitNoteList";
-import CreateDebitNote from "../pages/admin/purchases/CreateDebitNote";
-import CurrencyList from "../pages/admin/settings/financeSettings/currencies/CurrencyList";
-import LocalizationSettings from "../pages/admin/settings/websiteSettings/LocalizationSettings";
+import AdminLayout from "@components/admin/layouts/AdminLayout";
+import UnitList from "@pages/admin/productAndServices/UnitList";
+import BrandList from "@pages/admin/productAndServices/BrandList";
+import CategoryList from "@pages/admin/productAndServices/Categories";
+import ProductList from "@pages/admin/productAndServices/ProductList";
+import AddProduct from "@pages/admin/productAndServices/AddProduct";
+import EditProduct from "@pages/admin/productAndServices/EditProduct";
+import TaxRateList from "@pages/admin/settings/TaxRates";
+import TaxGroups from "@pages/admin/settings/TaxGroups";
+import AccountSettings from "@pages/admin/settings/AccountSettings";
+import SupplierList from "@pages/admin/purchases/SupplierList";
+import SignatureList from "@pages/admin/settings/systemSettings/SignatureList";
+import PurchaseOrderList from "@pages/admin/purchases/PurchaseOrderList";
+import CreatePurchaseOrder from "@pages/admin/purchases/CreatePurchaseOrder";
+import BankAccountList from "@pages/admin/settings/financeSettings/BankAccountList";
+import CompanySettings from "@pages/admin/settings/websiteSettings/CompanySettings";
+import EditPurchaseOrder from "@pages/admin/purchases/EditPurchaseOrder";
+import PurchaseList from "@pages/admin/purchases/PurchaseList";
+import CreatePurchase from "@pages/admin/purchases/CreatePurchase";
+import SupplierPayments from "@pages/admin/purchases/SupplierPayments";
+import DebitNoteList from "@pages/admin/purchases/DebitNoteList";
+import CreateDebitNote from "@pages/admin/purchases/CreateDebitNote";
+import CurrencyList from "@pages/admin/settings/financeSettings/currencies/CurrencyList";
+import LocalizationSettings from "@pages/admin/settings/websiteSettings/LocalizationSettings";
+import CustomerList from "@pages/admin/customers/CustomerList";
+import CustomerForm from "@pages/admin/customers/CustomerForm";
 
 const AdminRoute = () => {
     return (
@@ -43,6 +45,10 @@ const AdminRoute = () => {
                     <Route path="/products" element={<ProductList />} />
                     <Route path="/products/new" element={<AddProduct />} />
                     <Route path="/products/edit/:id" element={<EditProduct />} />
+
+                    {/* Customers Routes */}
+                    <Route path="/customers" element={<CustomerList />} />
+                    <Route path="/customers/new" element={<CustomerForm />} />
 
                     {/* General Settings Routes */}
                     <Route path="/settings/account" element={<AccountSettings />} />

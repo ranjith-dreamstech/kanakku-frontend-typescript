@@ -1,7 +1,7 @@
 import { CirclePlusIcon, Edit, Trash2Icon } from "lucide-react";
 import type React from "react";
 import { useSearchParams } from "react-router-dom";
-import Table from "../../../../../components/admin/Tabls";
+import Table from "../../../../../components/admin/Table";
 import CurrencyFormModal from "./CurrencyFormModal";
 import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";

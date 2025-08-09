@@ -6,7 +6,7 @@ import { useSelector } from "react-redux";
 
 import type { RootState } from "../../../store";
 import Constants from "../../../constants/api";
-import Table from "../../../components/admin/Tabls";
+import Table from "../../../components/admin/Table";
 import Modal from "../../../components/admin/Modal";
 import PaginationWrapper from "../../../components/admin/PaginationWrapper";
 import UnitTableRow from "../../../components/admin/UnitTableRow"; // Assuming this is the correct path

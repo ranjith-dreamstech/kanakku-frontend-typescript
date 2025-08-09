@@ -1,12 +1,12 @@
 import { useSelector } from "react-redux";
-import type { RootState } from "../../../store";
+import type { RootState } from "@store/index";
 import { useEffect, useState, type FC } from "react";
 import axios, { AxiosError } from "axios";
-import Constants from "../../../constants/api";
+import Constants from "@constants/api";
 import { toast } from "react-toastify";
-import Modal from "../../../components/admin/Modal";
-import SearchableDropdown from "../../../components/admin/SearchableDropdown";
-import DateInput from "../../../components/admin/DateInput";
+import Modal from "@components/admin/Modal";
+import SearchableDropdown from "@components/admin/SearchableDropdown";
+import DateInput from "@components/admin/DateInput";
 
 interface PaymentFormModalProps {
     isOpen: boolean;

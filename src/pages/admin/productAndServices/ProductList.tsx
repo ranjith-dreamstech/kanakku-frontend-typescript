@@ -3,7 +3,7 @@ import type { FC, ChangeEvent } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Constants from "../../../constants/api";
 import axios from "axios";
-import Table from "../../../components/admin/Tabls";
+import Table from "../../../components/admin/Table";
 import Modal from "../../../components/admin/Modal";
 import PaginationWrapper from "../../../components/admin/PaginationWrapper";
 import { EditIcon, TrashIcon, MoreVertical } from "lucide-react";

@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
-import Modal from "../../../components/admin/Modal";
+import Modal from "@components/admin/Modal";
 import { Image, Trash2Icon } from "lucide-react";
 import axios, { AxiosError } from "axios";
-import Constants from "../../../constants/api";
+import Constants from "@constants/api";
 import { toast } from "react-toastify";
 import { useSelector } from "react-redux";
-import type { RootState } from "../../../store";
-import RowRadioButtonsGroup from "../../../components/admin/RowRadioButtonsGroup";
+import type { RootState } from "@store/index";
+import RowRadioButtonsGroup from "@components/admin/RowRadioButtonsGroup";
 
 interface SupplierFormData {
     id?: string;

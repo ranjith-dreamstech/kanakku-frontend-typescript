@@ -1,18 +1,17 @@
 import React, { useEffect, useState, type FC } from "react";
 import { CirclePlusIcon, Edit, Trash2Icon } from "lucide-react";
-import Table from "../../../components/admin/Tabls";
+import Table from "@components/admin/Table";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import axios from "axios";
 import { useSelector } from "react-redux";
-import type { RootState } from "../../../store";
-import Constants from "../../../constants/api";
-import TableRow from "../../../components/admin/TableRow";
-import Modal from "../../../components/admin/Modal";
+import type { RootState } from "@store/index";
+import Constants from "@constants/api";
+import TableRow from "@components/admin/TableRow";
 import { toast } from "react-toastify";
-import PaginationWrapper from "../../../components/admin/PaginationWrapper";
-import StatusBadge from "../../../components/admin/StatusBadge";
-import PaymentModeBadge from "../../../components/admin/PaymentModeBadge";
-import DeleteConfirmationModal from "../../../components/admin/DeleteConfirmationModal";
+import PaginationWrapper from "@components/admin/PaginationWrapper";
+import StatusBadge from "@components/admin/StatusBadge";
+import PaymentModeBadge from "@components/admin/PaymentModeBadge";
+import DeleteConfirmationModal from "@components/admin/DeleteConfirmationModal";
 
 interface DebitNoteList {
     id: string;
@@ -118,7 +117,7 @@ const DebitNoteList: FC = () => {
         }
     };
 
-    const handleEditClick = (item: Purchase) => {
+    const handleEditClick = (item: DebitNoteList) => {
         navigate(`/admin/purchase-orders/edit/${item.id}`);
     };
 
@@ -147,7 +146,7 @@ const DebitNoteList: FC = () => {
         {
             label: 'Edit',
             icon: <Edit size={14} />,
-            onClick: (item: Purchase) => { handleEditClick(item) }
+            onClick: (item: DebitNoteList) => { handleEditClick(item) }
         },
         {
             label: 'Delete',
@@ -203,7 +202,7 @@ const DebitNoteList: FC = () => {
                             debitNote.debitNoteDate,
                             <div className="flex items-center">
                                 <img
-                                    src={debitNote.vendor.profileImage}
+                                    src={debitNote.vendor?.profileImage || ""}
                                     alt={debitNote.vendor.name}
                                     className="h-10 w-10 rounded-full object-cover mr-3 border border-gray-300 dark:border-gray-700"
                                 />

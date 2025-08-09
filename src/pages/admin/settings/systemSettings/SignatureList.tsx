@@ -6,7 +6,7 @@ import axios, { AxiosError } from "axios";
 import { toast } from "react-toastify";
 import { useSelector } from "react-redux";
 import type { RootState } from "../../../../store";
-import Table from "../../../../components/admin/Tabls";
+import Table from "../../../../components/admin/Table";
 import TableRow from "../../../../components/admin/TableRow"; // Assuming you have this component
 import { useSearchParams } from "react-router-dom";
 import Pagination from "@mui/material/Pagination";
