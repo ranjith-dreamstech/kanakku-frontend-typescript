@@ -12,6 +12,7 @@ import SignatureCanvas from 'react-signature-canvas';
 import { toWords } from 'number-to-words';
 import { toast } from 'react-toastify';
 import { useNavigate, useParams } from 'react-router-dom';
+import CreateSupplierForm from './CreateSupplierForm';
 
 // --- INTERFACES ---
 
@@ -136,12 +137,14 @@ const EditPurchaseOrder: React.FC = () => {
     const [productSearchInput, setProductSearchInput] = useState<string>('');
     const [isProductLoading, setIsProductLoading] = useState<boolean>(false);
     const debouncedSearchTerm = useDebounce(productSearchInput, 500);
+    const [supplierSearchInput, setSupplierSearchInput] = useState<string>('');
+    const debouncedSupplierSearchTerm = useDebounce(supplierSearchInput, 500);
 
     const [selectedAdmin, setSelectedAdmin] = useState<User | null>(null);
     const [selectedSupplier, setSelectedSupplier] = useState<User | null>(null);
     const [companyDetails, setCompanyDetails] = useState<selectedAdmin | null>(null);
     const [supplierDetails, setSupplierDetails] = useState<selectedSupplier | null>(null);
-
+    const [isSupplierModalOpen, setIsSupplierModalOpen] = useState(false);
     const [purchaseFormData, setPurchaseFormData] = useState<PurchaseFormData>({
         _id: '',
         userId: user?.id || '',
@@ -181,7 +184,7 @@ const EditPurchaseOrder: React.FC = () => {
 
     useEffect(() => {
         fetchAdminUsers();
-        fetchSuppliers();
+        // fetchSuppliers();
         fetchTaxes();
         fetchBankAccounts();
         fetchManualSignatures();
@@ -499,7 +502,26 @@ const EditPurchaseOrder: React.FC = () => {
             console.error('Error fetching admin users:', error);
         }
     };
-
+    
+    useEffect(() => {
+        const fetchSuppliersByQuery = async () => {
+            try {
+                const response = await axios.get(`${Constants.FETCH_USERS_URL}/2`, {
+                    params: { search: debouncedSupplierSearchTerm, limit: 100, page: 1 },
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (response.data.data.length > 0) {
+                    const formattedSuppliers = response.data.data.map((supplier: any) => ({ id: supplier.id, name: `${supplier.firstName} ${supplier.lastName}` }));
+                    setSuppliers(formattedSuppliers);
+                } else {
+                    setSuppliers([]);
+                }
+            } catch (error) {
+                console.error('Error fetching suppliers:', error);
+            }
+        }
+        fetchSuppliersByQuery();
+    }, [debouncedSupplierSearchTerm, token]);
     const fetchSuppliers = async () => {
         try {
             const response = await axios.get(`${Constants.FETCH_USERS_URL}/2`, {
@@ -608,7 +630,6 @@ const EditPurchaseOrder: React.FC = () => {
 
         return new File([u8arr], filename, { type: mime });
     };
-    console.log('formdata ',purchaseFormData);
     
     if(isLoading) return <div>Loading...</div>;
     return (
@@ -722,7 +743,10 @@ const EditPurchaseOrder: React.FC = () => {
                     <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
                         <div className="flex justify-between items-center">
                             <h3 className="font-bold text-gray-800 dark:text-white">Bill To <span className='text-red-500'>*</span></h3>
-                            <button className="flex items-center text-sm text-purple-600 dark:text-purple-400 font-semibold">
+                            <button
+                                type='button'
+                                onClick={() => setIsSupplierModalOpen(true)}
+                                className="flex items-center text-sm text-purple-600 dark:text-purple-400 font-semibold cursor-pointer">
                                 <PlusCircle className="h-4 w-4 mr-1" />
                                 Add New
                             </button>
@@ -732,7 +756,9 @@ const EditPurchaseOrder: React.FC = () => {
                                 options={suppliers}
                                 placeholder="Select Supplier"
                                 value={selectedSupplier}
-                                onChange={(e, value) => handleSupplierChange(value as User)}
+                                inputValue={supplierSearchInput}
+                                onInputChange={(e, value) => setSupplierSearchInput(value)}
+                                onChange={(e, value) => {handleSupplierChange(value as User); setSupplierSearchInput('')}}
                             />
                             {formErrors?.billTo && <span className="text-red-500 text-sm">{formErrors.billTo}</span>}
                             <p className="mt-2 text-xs text-gray-500 dark:text-gray-400 p-2 bg-gray-50 dark:bg-gray-700/50 rounded-md font-semibold">
@@ -1041,6 +1067,12 @@ const EditPurchaseOrder: React.FC = () => {
                 </div>
             </Modal>
             </form>
+            {/* Create Supplier Form */}
+            <CreateSupplierForm
+                isOpen={isSupplierModalOpen}
+                onClose={() => setIsSupplierModalOpen(false)}
+                onSuccess={() => setIsSupplierModalOpen(false)}
+            />
         </div>
     );
 };

@@ -29,6 +29,9 @@ import LocalizationSettings from "@pages/admin/settings/websiteSettings/Localiza
 import CustomerList from "@pages/admin/customers/CustomerList";
 import CustomerForm from "@pages/admin/customers/CreateCustomer";
 import EditCustomer from "@pages/admin/customers/EditCustomer";
+import QuotationList from "@pages/admin/quotations/QuotationList";
+import CreateNewQuotation from "@pages/admin/quotations/CreateNewQuotation";
+import EditQuotation from "@pages/admin/quotations/EditQuotation";
 
 const AdminRoute = () => {
     return (
@@ -47,11 +50,16 @@ const AdminRoute = () => {
                     <Route path="/products/new" element={<AddProduct />} />
                     <Route path="/products/edit/:id" element={<EditProduct />} />
 
+                    {/* Quotations Routes */}
+                    <Route path="/quotations" element={<QuotationList />} />
+                    <Route path="/quotations/new" element={<CreateNewQuotation />} />
+                    <Route path="/quotations/edit/:id" element={<EditQuotation />} />
+
                     {/* Customers Routes */}
                     <Route path="/customers" element={<CustomerList />} />
                     <Route path="/customers/new" element={<CustomerForm />} />
                     <Route path="/customers/edit/:id" element={<EditCustomer />} />
-
+                    
                     {/* General Settings Routes */}
                     <Route path="/settings/account" element={<AccountSettings />} />
 

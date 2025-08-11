@@ -102,6 +102,13 @@ const Constants = {
   DELETE_CUSTOMER_URL: `${API_BASE_URL}/admin/customers`,
   FETCH_LOCALIZATION_DROPDOWNS_URL: `${API_BASE_URL}/admin/localization`,
   UPDATE_LOCALIZATION_URL: `${API_BASE_URL}/admin/localizations`,
+  CREATE_QUOTATION_URL: `${API_BASE_URL}/admin/quotations`,
+  GET_CUSTOMERS_WITH_SEARCH_URL: `${API_BASE_URL}/admin/customers-all`,
+  GET_QUOTATIONS_FOR_LIST_URL: `${API_BASE_URL}/admin/quotations`,
+  DELETE_QUOTATION_URL: `${API_BASE_URL}/admin/quotations`,
+  FETCH_QUOTATION_DETAILS_URL: `${API_BASE_URL}/admin/quotations`,
+  UPDATE_QUOTATION_URL: `${API_BASE_URL}/admin/quotations`,
+  
 };
 
 export default Constants;

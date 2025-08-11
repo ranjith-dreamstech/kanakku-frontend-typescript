@@ -14,19 +14,44 @@ import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
 import CreateSupplierForm from '@pages/admin/purchases/CreateSupplierForm';
 
-// --- INTERFACES ---
 
 interface User {
     id: string;
     name: string;
 }
 
-interface PurchaseFormData {
+interface Customer extends User {
+    id: string;
+    name: string;
+    email: string;
+    phone: string;
+    status: string;
+    image: string | null;
+    billingAddress: {
+        name: string;
+        addressLine1: string;
+        addressLine2: string;
+        city: string;
+        state: string;
+        country: string;
+        pincode: string;
+    };
+    shippingAddress: {
+        name: string;
+        addressLine1: string;
+        addressLine2: string;
+        city: string;
+        state: string;
+        country: string;
+        pincode: string;
+    };
+}
+interface QuotationFormData {
     userId: string;
     billFrom: string;
     billTo: string;
     referenceNo: string;
-    orderDate: Date | null;
+    quotationDate: Date | null;
     status: string;
     items: productItem[];
     notes: string;
@@ -57,22 +82,6 @@ interface selectedAdmin {
     companyLogo: File | null;
     fax: string;
     userId: string | null;
-}
-
-interface selectedSupplier {
-    id: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-    phone: string;
-    user_type: number;
-    profileImage: string;
-    dateOfBirth: string;
-    address: string;
-    country: string | null;
-    state: string | null;
-    city: string | null;
-    postalCode: string;
 }
 
 interface Product {
@@ -125,29 +134,29 @@ interface IBankAccount {
     name: string;
 }
 
-const CreatePurchaseOrder: React.FC = () => {
+const CreateNewQuotation: React.FC = () => {
     const navigate = useNavigate();
     const { token, user } = useSelector((state: RootState) => state.auth);
     const [adminUsers, setAdminUsers] = useState<User[]>([]);
-    const [suppliers, setSuppliers] = useState<User[]>([]);
+    const [customers, setCustomers] = useState<Customer[]>([]);
     const [products, setProducts] = useState<Product[]>([]);
     const [productSearchInput, setProductSearchInput] = useState<string>('');
     const [isProductLoading, setIsProductLoading] = useState<boolean>(false);
     const debouncedSearchTerm = useDebounce(productSearchInput, 500);
-    const [supplierSearchInput, setSupplierSearchInput] = useState<string>('');
-    const debouncedSupplierSearchTerm = useDebounce(supplierSearchInput, 500);
+    const [customerSearchInput, setCustomerSearchInput] = useState<string>('');
+    const debouncedSearchTermCustomer = useDebounce(customerSearchInput, 500);
 
     const [selectedAdmin, setSelectedAdmin] = useState<User | null>(null);
-    const [selectedSupplier, setSelectedSupplier] = useState<User | null>(null);
+    const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
     const [companyDetails, setCompanyDetails] = useState<selectedAdmin | null>(null);
-    const [supplierDetails, setSupplierDetails] = useState<selectedSupplier | null>(null);
+    const [customerDetails, setCustomerDetails] = useState<Customer | null>(null);
     const [isSupplierModalOpen, setIsSupplierModalOpen] = useState(false);
-    const [purchaseFormData, setPurchaseFormData] = useState<PurchaseFormData>({
+    const [quotationFormData, setQuotationFormData] = useState<QuotationFormData>({
         userId: user?.id || '',
         billFrom: '',
         billTo: '',
         referenceNo: '',
-        orderDate: null,
+        quotationDate: null,
         status: '',
         items: [],
         notes: '',
@@ -178,7 +187,6 @@ const CreatePurchaseOrder: React.FC = () => {
 
     useEffect(() => {
         fetchAdminUsers();
-        // fetchSuppliers();
         fetchTaxes();
         fetchBankAccounts();
         fetchManualSignatures();
@@ -249,25 +257,17 @@ const CreatePurchaseOrder: React.FC = () => {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             //set billFrom to formData
-            setPurchaseFormData({ ...purchaseFormData, billFrom: user.id });
+            setQuotationFormData({ ...quotationFormData, billFrom: user.id });
             setCompanyDetails(response.data.data);
         } catch (error) {
             setCompanyDetails(null);
         }
     };
 
-    const handleSupplierChange = async (user: User) => {
-        setSelectedSupplier(user);
-        try {
-            const response = await axios.get(`${Constants.FETCH_USER_BY_ID_URL}/${user.id}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            //set billTo to formData
-            setPurchaseFormData({ ...purchaseFormData, billTo: user.id });
-            setSupplierDetails(response.data.data);
-        } catch (error) {
-            setSupplierDetails(null);
-        }
+    const handleCustomerChange = async (user: Customer) => {
+        setSelectedCustomer(user);
+        setQuotationFormData({ ...quotationFormData, billTo: user.id });
+        setCustomerDetails(user);
     };
 
     useEffect(() => {
@@ -279,7 +279,7 @@ const CreatePurchaseOrder: React.FC = () => {
                         headers: { 'Authorization': `Bearer ${token}` }
                     });
                     const availableProducts = response.data.data.filter(
-                        (product: Product) => purchaseFormData.items.every((item: productItem) => item.id !== product.id)
+                        (product: Product) => quotationFormData.items.every((item: productItem) => item.id !== product.id)
                     );
                     setProducts(availableProducts);
                 } catch (error) {
@@ -296,8 +296,8 @@ const CreatePurchaseOrder: React.FC = () => {
     }, [debouncedSearchTerm, token]);
 
     // --- ITEM & FORM HANDLERS ---
-    const handleFormChange = (field: keyof PurchaseFormData, value: any) => {
-        setPurchaseFormData(prev => ({ ...prev, [field]: value }));
+    const handleFormChange = (field: keyof QuotationFormData, value: any) => {
+        setQuotationFormData(prev => ({ ...prev, [field]: value }));
     };
 
     const handleProductChange = (product: Product) => {
@@ -326,11 +326,11 @@ const CreatePurchaseOrder: React.FC = () => {
             discount_value: discountValue,
             amount: (sellingPrice * 1) - productDiscount + productTax,
         };
-        handleFormChange('items', [...purchaseFormData.items, newItem]);
+        handleFormChange('items', [...quotationFormData.items, newItem]);
     };
 
     const handleRemoveItem = (itemToRemove: productItem) => {
-        handleFormChange('items', purchaseFormData.items.filter(item => item.id !== itemToRemove.id));
+        handleFormChange('items', quotationFormData.items.filter(item => item.id !== itemToRemove.id));
     };
 
     const handleEditItem = (itemToEdit: productItem) => {
@@ -381,7 +381,7 @@ const CreatePurchaseOrder: React.FC = () => {
 
     const handleUpdateItem = () => {
         if (!editingItem) return;
-        const updatedItems = purchaseFormData.items.map(item =>
+        const updatedItems = quotationFormData.items.map(item =>
             item.id === editingItem.id ? editingItem : item
         );
         handleFormChange('items', updatedItems);
@@ -401,16 +401,16 @@ const CreatePurchaseOrder: React.FC = () => {
 
     // --- DYNAMIC CALCULATIONS ---
     const { subTotal, totalTax, totalDiscount, grandTotal } = useMemo(() => {
-        const totals = purchaseFormData.items.reduce((acc, item) => {
+        const totals = quotationFormData.items.reduce((acc, item) => {
             acc.subTotal += item.rate * item.qty;
             acc.totalDiscount += item.discount;
             acc.totalTax += item.tax;
             return acc;
         }, { subTotal: 0, totalTax: 0, totalDiscount: 0 });
         let grand_total = totals.subTotal - totals.totalDiscount + totals.totalTax;
-        setPurchaseFormData(prev => ({ ...prev, subTotal: totals.subTotal, totalTax: totals.totalTax, totalDiscount: totals.totalDiscount, grandTotal: grand_total }));
+        setQuotationFormData(prev => ({ ...prev, subTotal: totals.subTotal, totalTax: totals.totalTax, totalDiscount: totals.totalDiscount, grandTotal: grand_total }));
         return { ...totals, grandTotal: grand_total };
-    }, [purchaseFormData.items]);
+    }, [quotationFormData.items]);
 
     const totalInWords = useMemo(() => {
         if (grandTotal <= 0) return 'Zero';
@@ -418,8 +418,8 @@ const CreatePurchaseOrder: React.FC = () => {
     }, [grandTotal]);
 
     const selectedManualSignatureImage = useMemo(() => {
-        return manualSignatures.find(sig => sig.id === purchaseFormData.signatureId)?.imageUrl || null;
-    }, [purchaseFormData.signatureId, manualSignatures]);
+        return manualSignatures.find(sig => sig.id === quotationFormData.signatureId)?.imageUrl || null;
+    }, [quotationFormData.signatureId, manualSignatures]);
 
 
     const fetchAdminUsers = async () => {
@@ -439,71 +439,52 @@ const CreatePurchaseOrder: React.FC = () => {
     };
 
     useEffect(() => {
-        const fetchSuppliersByQuery = async () => {
+        const fetchCustomersByQuery = async () => {
             try {
-                const response = await axios.get(`${Constants.FETCH_USERS_URL}/2`, {
-                    params: { search: debouncedSupplierSearchTerm, limit: 100, page: 1 },
+                const response = await axios.get(`${Constants.GET_CUSTOMERS_WITH_SEARCH_URL}`, {
+                    params: { search: debouncedSearchTermCustomer, limit: 100, page: 1 },
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
-                if (response.data.data.length > 0) {
-                    const formattedSuppliers = response.data.data.map((supplier: any) => ({ id: supplier.id, name: `${supplier.firstName} ${supplier.lastName}` }));
-                    setSuppliers(formattedSuppliers);
+                let data = response.data.data;
+                if (data.customers.length > 0) {
+                    setCustomers(response.data.data.customers);
                 } else {
-                    setSuppliers([]);
+                    setCustomers([]);
                 }
             } catch (error) {
-                console.error('Error fetching suppliers:', error);
+                console.error('Error fetching customers:', error);
             }
-        } 
-        fetchSuppliersByQuery();
-    }, [debouncedSupplierSearchTerm, token]);
-
-    const fetchSuppliers = async () => {
-        try {
-            const response = await axios.get(`${Constants.FETCH_USERS_URL}/2`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (response.data.data.length > 0) {
-                const formattedSuppliers = response.data.data.map((supplier: any) => ({ id: supplier.id, name: `${supplier.firstName} ${supplier.lastName}` }));
-                setSuppliers(formattedSuppliers);
-            } else {
-                setSuppliers([]);
-            }
-        } catch (error) {
-            console.error('Error fetching suppliers:', error);
         }
-    };
-
-    const validatePurchaseOrderData = () => {
+        fetchCustomersByQuery();
+    }, [debouncedSearchTermCustomer, token]);
+    
+    const validateQuotationData = () => {
         // Add your validation logic here
         const newErrors: { [key: string]: string } = {};
-        // if (!purchaseFormData.poId.trim()) newErrors.poId = 'Order ID is required.';
         //reference number required
-        if (!purchaseFormData.referenceNo.trim()) newErrors.referenceNo = 'Reference number is required.';
+        if (!quotationFormData.referenceNo.trim()) newErrors.referenceNo = 'Reference number is required.';
         //order date required
-        if (!purchaseFormData.orderDate) newErrors.orderDate = 'Order date is required.';
+        if (!quotationFormData.quotationDate) newErrors.quotationDate = 'Quotation date is required.';
         //status required
-        if (!purchaseFormData.status.trim()) newErrors.status = 'Status is required.';
+        if (!quotationFormData.status.trim()) newErrors.status = 'Status is required.';
         //billFrom required
-        if (!purchaseFormData.billFrom.trim()) newErrors.billFrom = 'Bill from is required.';
+        if (!quotationFormData.billFrom.trim()) newErrors.billFrom = 'Bill from is required.';
         //billTo required
-        if (!purchaseFormData.billTo.trim()) newErrors.billTo = 'Bill to is required.';
+        if (!quotationFormData.billTo.trim()) newErrors.billTo = 'Bill to is required.';
         //atleast 1 item required
-        if (purchaseFormData.items.length === 0) newErrors.items = 'At least one item is required.';
+        if (quotationFormData.items.length === 0) newErrors.items = 'At least one item is required.';
         //sign_type if manual then signatureId required
-        if (purchaseFormData.sign_type === 'digitalSignature' && !purchaseFormData.signatureId) newErrors.signatureId = 'Manual signature is required.';
+        if (quotationFormData.sign_type === 'digitalSignature' && !quotationFormData.signatureId) newErrors.signatureId = 'Manual signature is required.';
         //sign_type if esignature then signatureName required
-        if (purchaseFormData.sign_type === 'eSignature' && !purchaseFormData.signatureName.trim()) newErrors.signatureName = 'Esignature name is required.';
-        if (purchaseFormData.sign_type === 'eSignature' && !purchaseFormData.esignDataUrl) newErrors.esignDataUrl = 'Esignature is required.';
+        if (quotationFormData.sign_type === 'eSignature' && !quotationFormData.signatureName.trim()) newErrors.signatureName = 'Esignature name is required.';
+        if (quotationFormData.sign_type === 'eSignature' && !quotationFormData.esignDataUrl) newErrors.esignDataUrl = 'Esignature is required.';
         setFormErrors(newErrors);
-        console.log("formErrors", formErrors);
-        console.log("purchaseFormData", purchaseFormData);
         return newErrors;
     }
-    const savePurchaseOrder = async (e: React.FormEvent) => {
+    const saveQuotation = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        const errors = validatePurchaseOrderData();
+        const errors = validateQuotationData();
 
         if (Object.keys(errors).length > 0) {
             const firstErrorField = Object.keys(errors)[0];
@@ -514,8 +495,8 @@ const CreatePurchaseOrder: React.FC = () => {
 
         const formData = new FormData();
 
-        Object.entries(purchaseFormData).forEach(([key, value]) => {
-            if (key === 'esignDataUrl' && purchaseFormData.sign_type === 'eSignature') {
+        Object.entries(quotationFormData).forEach(([key, value]) => {
+            if (key === 'esignDataUrl' && quotationFormData.sign_type === 'eSignature') {
                 const file = dataURLtoFile(value, 'signature.png');
                 formData.append('signatureImage', file);
 
@@ -537,15 +518,15 @@ const CreatePurchaseOrder: React.FC = () => {
         });
 
         try {
-            await axios.post(Constants.CREATE_PURCHASE_ORDER_URL, formData, {
+            await axios.post(Constants.CREATE_QUOTATION_URL, formData, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                     'Content-Type': 'multipart/form-data',
                 },
             });
 
-            toast.success('Purchase order saved successfully.');
-            navigate('/admin/purchase-orders');
+            toast.success('Quotation saved successfully.');
+            navigate('/admin/quotations');
         } catch (error: any) {
             if (error.response?.status !== 200 && error.response?.data?.errors) {
                 setFormErrors(error.response.data.errors);
@@ -572,29 +553,17 @@ const CreatePurchaseOrder: React.FC = () => {
 
     return (
         <div className="p-4 md:p-6 bg-white-50 dark:bg-gray-50 dark:bg-gray-900 min-h-screen border border-gray-200 dark:border-gray-700 rounded">
-            <form onSubmit={savePurchaseOrder}>
+            <form onSubmit={saveQuotation}>
                 <div className="max-w-7xl mx-auto space-y-6">
 
                     {/* Header */}
                     <div className="flex justify-between items-center mb-6">
-                        <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Purchase Order Details</h1>
+                        <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Quotation Details</h1>
                         <img src="https://kanakku-web-new.dreamstechnologies.com/e4f01b6957284e6a7fcd.svg" alt="" />
                     </div>
                     {/* Top Section: PO Details & Logo */}
                     <div className="w-full">
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 w-full">
-                            <div className="w-full">
-                                <label htmlFor="po-id" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    Order ID
-                                </label>
-                                <input
-                                    type="text"
-                                    id="po-id"
-                                    value={sessionStorage.getItem('nextPurchaseOrderId') || ''}
-                                    readOnly
-                                    className="border border-gray-300 rounded-md px-4 py-2 w-full dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-600"
-                                />
-                            </div>
                             <div className="w-full">
                                 <label htmlFor="ref-no" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                                     Reference No <em className='text-red-500'>*</em>
@@ -605,19 +574,19 @@ const CreatePurchaseOrder: React.FC = () => {
                                     placeholder="Enter Reference Number"
                                     name='referenceNo'
                                     onChange={(e) => handleFormChange('referenceNo', e.target.value)}
-                                    className="border border-gray-300 rounded-md px-4 py-2 w-full dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-600"
+                                    className="border border-gray-300 mt-1 rounded-md px-4 py-2 w-full dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-600"
                                 />
                                 {formErrors?.referenceNo && <span className="text-red-500 text-sm">{formErrors.referenceNo}</span>}
                             </div>
                             <div className="w-full">
                                 <DateInput
-                                    label="Order Date"
-                                    value={purchaseFormData.orderDate}
-                                    onChange={(newDate) => handleFormChange('orderDate', newDate)}
+                                    label="Quotation Date"
+                                    value={quotationFormData.quotationDate}
+                                    onChange={(newDate) => handleFormChange('quotationDate', newDate)}
                                     minDate={new Date()}
                                     isRequired
                                 />
-                                {formErrors?.orderDate && <span className="text-red-500 text-sm">{formErrors.orderDate}</span>}
+                                {formErrors?.quotationDate && <span className="text-red-500 text-sm">{formErrors.quotationDate}</span>}
                             </div>
                             <div className="w-full">
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -626,7 +595,7 @@ const CreatePurchaseOrder: React.FC = () => {
                                 <select
                                     name="status"
                                     onChange={(e) => handleFormChange('status', e.target.value)}
-                                    className="border border-gray-300 rounded-md px-4 py-2 w-full dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-600"
+                                    className="border border-gray-300 mt-1 rounded-md px-4 py-2 w-full dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-600"
                                 >
                                     <option>Select</option>
                                     <option value="new">New</option>
@@ -689,32 +658,32 @@ const CreatePurchaseOrder: React.FC = () => {
                             </div>
                             <div className="mt-4">
                                 <SearchableDropdown
-                                    options={suppliers}
-                                    placeholder="Select Supplier"
-                                    value={selectedSupplier}
-                                    inputValue={supplierSearchInput}
-                                    onInputChange={(e, value) => setSupplierSearchInput(value)}
-                                    onChange={(e, value) => { handleSupplierChange(value as User); setSupplierSearchInput(''); }}
+                                    options={customers}
+                                    placeholder="Select Customer"
+                                    value={selectedCustomer}
+                                    inputValue={customerSearchInput}
+                                    onInputChange={(e, value) => setCustomerSearchInput(value)}
+                                    onChange={(e, value) => { handleCustomerChange(value as Customer); setCustomerSearchInput('') }}
                                 />
                                 {formErrors?.billTo && <span className="text-red-500 text-sm">{formErrors.billTo}</span>}
                                 <p className="mt-2 text-xs text-gray-500 dark:text-gray-400 p-2 bg-gray-50 dark:bg-gray-700/50 rounded-md font-semibold">
-                                    Select supplier to view vendor details
+                                    Select customer to view customer details
                                 </p>
-                                {selectedSupplier && supplierDetails && (
+                                {selectedCustomer && customerDetails && (
                                     <div className="mt-4 flex gap-3 p-4 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-md">
                                         <div className="w-15 h-15 flex items-center justify-center rounded bg-white dark:bg-gray-800 border border-gray-200">
                                             <img
-                                                src={supplierDetails.profileImage || 'https://kanakku-web-new.dreamstechnologies.com/e4f01b6957284e6a7fcd.svg'}
-                                                alt={supplierDetails.firstName}
+                                                src={customerDetails?.image || 'null'}
+                                                alt={customerDetails.name}
                                                 className="w-12 h-12 object-contain"
                                             />
                                         </div>
                                         <div>
                                             <h4 className="font-semibold text-gray-900 dark:text-white uppercase">
-                                                {supplierDetails.firstName + ' ' + supplierDetails.lastName}
+                                                {customerDetails.name}
                                             </h4>
-                                            <p className="text-sm text-gray-600 dark:text-gray-300"><span className='font-semibold'>Email :</span> {supplierDetails.email}</p>
-                                            <p className="text-sm text-gray-500 dark:text-gray-400"><span className='font-semibold'>Phone :</span> {supplierDetails.phone}</p>
+                                            <p className="text-sm text-gray-600 dark:text-gray-300"><span className='font-semibold'>Email :</span> {customerDetails.email}</p>
+                                            <p className="text-sm text-gray-500 dark:text-gray-400"><span className='font-semibold'>Phone :</span> {customerDetails.phone}</p>
                                         </div>
                                     </div>
                                 )}
@@ -754,7 +723,7 @@ const CreatePurchaseOrder: React.FC = () => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {purchaseFormData.items.map((item) => (
+                                    {quotationFormData.items.map((item) => (
                                         <tr key={item.id} className="bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700">
                                             <td className="p-3 font-medium">{item.name}</td>
                                             <td className="p-3">{item.unit}</td>
@@ -773,7 +742,7 @@ const CreatePurchaseOrder: React.FC = () => {
                                             </td>
                                         </tr>
                                     ))}
-                                    {purchaseFormData.items.length === 0 && (
+                                    {quotationFormData.items.length === 0 && (
                                         <tr className="bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200">
                                             <td className="p-3 font-medium text-center" colSpan={8}>
                                                 No Items Selected
@@ -918,13 +887,13 @@ const CreatePurchaseOrder: React.FC = () => {
                         {activeInfoTab === 'notes' && (
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Additional Notes</label>
-                                <textarea value={purchaseFormData.notes} onChange={(e) => handleFormChange('notes', e.target.value)} rows={4} placeholder="Enter Notes" className="border border-gray-300 rounded-md px-4 py-2 w-full dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-600"></textarea>
+                                <textarea value={quotationFormData.notes} onChange={(e) => handleFormChange('notes', e.target.value)} rows={4} placeholder="Enter Notes" className="border border-gray-300 rounded-md px-4 py-2 w-full dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-600"></textarea>
                             </div>
                         )}
                         {activeInfoTab === 'termsAndCondition' && (
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Terms & Conditions</label>
-                                <textarea value={purchaseFormData.termsAndCondition} onChange={(e) => handleFormChange('termsAndCondition', e.target.value)} rows={4} placeholder="Enter Terms & Conditions" className="border border-gray-300 rounded-md px-4 py-2 w-full dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-600"></textarea>
+                                <textarea value={quotationFormData.termsAndCondition} onChange={(e) => handleFormChange('termsAndCondition', e.target.value)} rows={4} placeholder="Enter Terms & Conditions" className="border border-gray-300 rounded-md px-4 py-2 w-full dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-600"></textarea>
                             </div>
                         )}
                         {activeInfoTab === 'bank' && (
@@ -933,7 +902,7 @@ const CreatePurchaseOrder: React.FC = () => {
                                 <SearchableDropdown
                                     options={bankAccounts}
                                     placeholder="Select Bank Account"
-                                    value={bankAccounts.find(b => b.id === purchaseFormData.bank) || null}
+                                    value={bankAccounts.find(b => b.id === quotationFormData.bank) || null}
                                     onChange={(e, value) => handleFormChange('bank', (value as IBankAccount)?.id || null)}
                                 />
                             </div>
@@ -950,14 +919,14 @@ const CreatePurchaseOrder: React.FC = () => {
                         <p className="text-sm text-gray-500 dark:text-gray-400 capitalize">{totalInWords}</p>
 
                         <div className="flex items-center gap-4 pt-4">
-                            <div className="flex items-center"><input id="manual-sig" type="radio" name="signature" checked={purchaseFormData.sign_type === 'digitalSignature'} onChange={() => handleFormChange('sign_type', 'digitalSignature')} className="h-4 w-4 text-purple-600 cursor-pointer" /><label htmlFor="manual-sig" className="ml-2 block text-sm text-gray-700 dark:text-gray-300 cursor-pointer">Manual Signature</label></div>
-                            <div className="flex items-center"><input id="e-sig" type="radio" name="signature" checked={purchaseFormData.sign_type === 'eSignature'} onChange={() => handleFormChange('sign_type', 'eSignature')} className="h-4 w-4 text-purple-600 cursor-pointer" /><label htmlFor="e-sig" className="ml-2 block text-sm text-gray-700 dark:text-gray-300 cursor-pointer">eSignature</label></div>
+                            <div className="flex items-center"><input id="manual-sig" type="radio" name="signature" checked={quotationFormData.sign_type === 'digitalSignature'} onChange={() => handleFormChange('sign_type', 'digitalSignature')} className="h-4 w-4 text-purple-600 cursor-pointer" /><label htmlFor="manual-sig" className="ml-2 block text-sm text-gray-700 dark:text-gray-300 cursor-pointer">Manual Signature</label></div>
+                            <div className="flex items-center"><input id="e-sig" type="radio" name="signature" checked={quotationFormData.sign_type === 'eSignature'} onChange={() => handleFormChange('sign_type', 'eSignature')} className="h-4 w-4 text-purple-600 cursor-pointer" /><label htmlFor="e-sig" className="ml-2 block text-sm text-gray-700 dark:text-gray-300 cursor-pointer">eSignature</label></div>
                         </div>
 
-                        {purchaseFormData.sign_type === 'digitalSignature' ? (
+                        {quotationFormData.sign_type === 'digitalSignature' ? (
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Select Signature Name <span className="text-red-500">*</span></label>
-                                <select value={purchaseFormData.signatureId || ''} onChange={(e) => handleFormChange('signatureId', e.target.value)} name='signatureId' className="border border-gray-300 rounded-md px-4 py-2 w-full dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-600">
+                                <select value={quotationFormData.signatureId || ''} onChange={(e) => handleFormChange('signatureId', e.target.value)} name='signatureId' className="border border-gray-300 rounded-md px-4 py-2 w-full dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-600">
                                     <option value="" disabled>Select a signature</option>
                                     {manualSignatures.map(sig => <option key={sig.id} value={sig.id}>{sig.name}</option>)}
                                 </select>
@@ -970,11 +939,11 @@ const CreatePurchaseOrder: React.FC = () => {
                         ) : (
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Signature Name <span className="text-red-500">*</span></label>
-                                <input name='signatureName' type="text" value={purchaseFormData.signatureName} onChange={e => handleFormChange('signatureName', e.target.value)} placeholder="Enter Signature Name" className="border border-gray-300 rounded-md px-4 py-2 w-full dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-600" />
+                                <input name='signatureName' type="text" value={quotationFormData.signatureName} onChange={e => handleFormChange('signatureName', e.target.value)} placeholder="Enter Signature Name" className="border border-gray-300 rounded-md px-4 py-2 w-full dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-600" />
                                 {formErrors?.signatureName && <p className="text-red-500 text-xs mt-1">{formErrors.signatureName}</p>}
                                 <p className="mt-2 text-sm font-medium text-gray-700 dark:text-gray-300">Draw your eSignature</p>
                                 <div className="mt-2 h-20 w-48 bg-gray-100 dark:bg-gray-700 rounded-md flex items-center justify-center cursor-pointer border-2 border-dashed border-gray-400" onClick={() => setSignatureModalOpen(true)}>
-                                    {purchaseFormData.esignDataUrl ? <img src={purchaseFormData.esignDataUrl} alt="Drawn Signature" className="max-h-full max-w-full" /> : <div className="text-center text-gray-500"><Edit3 size={20} className="mx-auto mb-1" /><span className="text-xs">Draw Signature</span></div>}
+                                    {quotationFormData.esignDataUrl ? <img src={quotationFormData.esignDataUrl} alt="Drawn Signature" className="max-h-full max-w-full" /> : <div className="text-center text-gray-500"><Edit3 size={20} className="mx-auto mb-1" /><span className="text-xs">Draw Signature</span></div>}
                                 </div>
                                 {formErrors?.esignDataUrl && <p className="text-red-500 text-xs mt-1">{formErrors.esignDataUrl}</p>}
                             </div>
@@ -1014,4 +983,4 @@ const CreatePurchaseOrder: React.FC = () => {
     );
 };
 
-export default CreatePurchaseOrder;
+export default CreateNewQuotation;

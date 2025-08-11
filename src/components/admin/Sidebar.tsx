@@ -11,6 +11,7 @@ import {
     Settings2,
     Cpu,
     GlobeIcon,
+    ReceiptTextIcon,
 } from 'lucide-react';
 
 // --- Type Definitions ---
@@ -52,6 +53,9 @@ const navItems: NavItemType[] = [
     },
     {
         type: 'link', to: '/admin/customers', icon: <Users size={20}/>, title: 'Customers',
+    },
+    {
+        type: 'link', to: '/admin/quotations', icon: <ReceiptTextIcon size={20}/>, title: 'Quotations',
     },
     {type: 'header', title: 'Purchase'},
     {
@@ -149,12 +153,11 @@ const NavItem = ({to, icon, title, isSidebarOpen}: {
     </NavLink>
 );
 
-// --- RECURSIVE CollapsibleNavItem Component ---
 interface CollapsibleNavItemProps {
     item: NavCollapsibleItem;
     isSidebarOpen: boolean;
     openMenus: Record<string, boolean>;
-    activePath: string[]; // UPDATED: Pass the full active path
+    activePath: string[]; 
     onToggle: (id: string) => void;
     level: number;
 }
