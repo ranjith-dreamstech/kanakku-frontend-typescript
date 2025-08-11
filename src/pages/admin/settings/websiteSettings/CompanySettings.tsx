@@ -3,7 +3,7 @@ import { Info, Image as ImageIcon, MapPin, UploadCloud } from 'lucide-react';
 import axios from 'axios';
 import Constants from '@constants/api';
 import { useSelector } from 'react-redux';
-import type { RootState } from '@store';
+import type { RootState } from '@store/index';
 import SearchableDropdown from '@components/admin/SearchableDropdown';
 import debounce from 'lodash/debounce';
 import { toast } from 'react-toastify';

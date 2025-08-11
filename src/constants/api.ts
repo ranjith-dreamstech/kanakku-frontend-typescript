@@ -100,6 +100,8 @@ const Constants = {
   GET_CUSTOMER_FOR_EDIT_URL: `${API_BASE_URL}/admin/customers`,
   UPDATE_CUSTOMER_URL: `${API_BASE_URL}/admin/customers`,
   DELETE_CUSTOMER_URL: `${API_BASE_URL}/admin/customers`,
+  FETCH_LOCALIZATION_DROPDOWNS_URL: `${API_BASE_URL}/admin/localization`,
+  UPDATE_LOCALIZATION_URL: `${API_BASE_URL}/admin/localizations`,
 };
 
 export default Constants;
