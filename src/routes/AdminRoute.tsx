@@ -27,7 +27,8 @@ import CreateDebitNote from "@pages/admin/purchases/CreateDebitNote";
 import CurrencyList from "@pages/admin/settings/financeSettings/currencies/CurrencyList";
 import LocalizationSettings from "@pages/admin/settings/websiteSettings/LocalizationSettings";
 import CustomerList from "@pages/admin/customers/CustomerList";
-import CustomerForm from "@pages/admin/customers/CustomerForm";
+import CustomerForm from "@pages/admin/customers/CreateCustomer";
+import EditCustomer from "@pages/admin/customers/EditCustomer";
 
 const AdminRoute = () => {
     return (
@@ -49,6 +50,7 @@ const AdminRoute = () => {
                     {/* Customers Routes */}
                     <Route path="/customers" element={<CustomerList />} />
                     <Route path="/customers/new" element={<CustomerForm />} />
+                    <Route path="/customers/edit/:id" element={<EditCustomer />} />
 
                     {/* General Settings Routes */}
                     <Route path="/settings/account" element={<AccountSettings />} />

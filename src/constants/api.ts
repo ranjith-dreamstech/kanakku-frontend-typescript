@@ -95,6 +95,11 @@ const Constants = {
   UPDATE_CURRENCY_STATUS_URL: `${API_BASE_URL}/admin/currency`,
   UPDATE_CURRENCY_URL: `${API_BASE_URL}/admin/currency`,
   DELETE_CURRENCY_URL: `${API_BASE_URL}/admin/currency`,
+  CREATE_CUSTOMER_URL: `${API_BASE_URL}/admin/customers`,
+  GET_CUSTOMERS_FOR_LIST_URL: `${API_BASE_URL}/admin/customers`,
+  GET_CUSTOMER_FOR_EDIT_URL: `${API_BASE_URL}/admin/customers`,
+  UPDATE_CUSTOMER_URL: `${API_BASE_URL}/admin/customers`,
+  DELETE_CUSTOMER_URL: `${API_BASE_URL}/admin/customers`,
 };
 
 export default Constants;
