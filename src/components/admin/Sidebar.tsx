@@ -12,6 +12,8 @@ import {
     Cpu,
     GlobeIcon,
     ReceiptTextIcon,
+    LogOutIcon,
+    Receipt,
 } from 'lucide-react';
 
 // --- Type Definitions ---
@@ -50,6 +52,16 @@ const navItems: NavItemType[] = [
             {type: 'link', to: '/admin/brands', title: 'Brands'},
             {type: 'link', to: '/admin/units', title: 'Units'},
         ],
+    },
+    {
+        type: 'collapsible',
+        id: 'invoices',
+        icon: <Receipt size={20}/>,
+        title: 'Invoices',
+        children: [
+            {type: 'link', to: '/admin/invoices', title: 'Invoices'},
+            {type: 'link', to: '/admin/invoice-templates', title: 'Invoice Templates'},
+        ]
     },
     {
         type: 'link', to: '/admin/customers', icon: <Users size={20}/>, title: 'Customers',
@@ -119,6 +131,10 @@ const navItems: NavItemType[] = [
                 ],
             },
         ],
+    },
+    //logout
+    {
+        type: 'link', to: '/admin/logout', icon: <LogOutIcon size={20}/>, title: 'Logout',
     },
 ];
 
