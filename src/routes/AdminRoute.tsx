@@ -34,6 +34,8 @@ import CreateNewQuotation from "@pages/admin/quotations/CreateNewQuotation";
 import EditQuotation from "@pages/admin/quotations/EditQuotation";
 import AdminLogout from "@pages/admin/auth/AdminLogout";
 import InvoiceTemplateList from "@pages/admin/invoices/InvoiceTemplateList";
+import CreateInvoice from "@pages/admin/invoices/CreateInvoice";
+import InvoiceList from "@pages/admin/invoices/InvoiceList";
 
 const AdminRoute = () => {
     return (
@@ -53,8 +55,10 @@ const AdminRoute = () => {
                     <Route path="/products/edit/:id" element={<EditProduct />} />
 
                     {/* Invoices Routes */}
+                    <Route path="/invoices" element={<InvoiceList />} />
+                    <Route path="/create-invoice" element={<CreateInvoice />} />
                     <Route path="/invoice-templates" element={<InvoiceTemplateList />} />
-
+                    
                     {/* Quotations Routes */}
                     <Route path="/quotations" element={<QuotationList />} />
                     <Route path="/quotations/new" element={<CreateNewQuotation />} />

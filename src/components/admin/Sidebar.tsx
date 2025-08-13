@@ -60,6 +60,7 @@ const navItems: NavItemType[] = [
         title: 'Invoices',
         children: [
             {type: 'link', to: '/admin/invoices', title: 'Invoices'},
+            {type: 'link', to: '/admin/create-invoice', title: 'Create Invoice'},
             {type: 'link', to: '/admin/invoice-templates', title: 'Invoice Templates'},
         ]
     },

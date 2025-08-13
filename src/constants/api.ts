@@ -110,6 +110,9 @@ const Constants = {
   UPDATE_QUOTATION_URL: `${API_BASE_URL}/admin/quotations`,
   MAKE_INVOICE_TEMPLATE_DEFAULT_URL: `${API_BASE_URL}/admin/invoice-template`,
   FETCH_DEFAULT_INVOICE_TEMPLATE_URL: `${API_BASE_URL}/admin/invoice-templates`,
+  CREATE_NEW_INVOICE_URL: `${API_BASE_URL}/admin/invoices`,
+  GET_INVOICES_FOR_LIST_URL: `${API_BASE_URL}/admin/invoices`,
+  
 };
 
 export default Constants;
