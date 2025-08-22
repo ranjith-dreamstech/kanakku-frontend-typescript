@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { UploadCloudIcon, User2Icon } from 'lucide-react';
 import InputField from '@components/admin/InputField';
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import Constants from '@constants/api';
 import { useSelector } from 'react-redux';
 import type { RootState } from '@store/index';
@@ -77,6 +77,10 @@ const initialFormData: CustomerFormData = {
     accountNumber: '',
     IFSC: '',
     branch: '',
+};
+
+type ErrorResponse = {
+  errors: { [key: string]: string };
 };
 
 const CustomerForm: React.FC<CustomerFormProps> = ({ customerData = null }) => {
@@ -253,7 +257,11 @@ const CustomerForm: React.FC<CustomerFormProps> = ({ customerData = null }) => {
             }
             navigate('/admin/customers');
         } catch (error) {
-            console.error("Form submission error:", error);
+            const axiosError = error as AxiosError<ErrorResponse>;
+
+            if (axiosError.response?.data?.errors) {
+                setFormErrors(axiosError.response.data.errors);
+            }
             toast.error('Something went wrong. Please try again.');
         }
     };

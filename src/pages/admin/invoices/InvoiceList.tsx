@@ -143,7 +143,7 @@ const InvoiceList: React.FC = () => {
     ];
 
     const handleEditClick = (item: Invoice) => {
-        navigate(`/admin/quotations/edit/${item.id}`);
+        navigate(`/admin/edit-invoice/${item.id}`);
     }
     const handleDeleteClick = (item: Invoice) => {
         setItemToDelete(item);
@@ -152,7 +152,7 @@ const InvoiceList: React.FC = () => {
 
     const confirmDelete = async () => {
         try {
-            await axios.delete(`${Constants.DELETE_QUOTATION_URL}/${itemToDelete?.id}`, {
+            await axios.delete(`${Constants.DELETE_INVOICE_URL}/${itemToDelete?.id}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             toast.success('Invoice deleted successfully');
@@ -229,7 +229,7 @@ const InvoiceList: React.FC = () => {
                 ))}
                 {invoices.length === 0 && (
                     <tr key="no-quotations">
-                        <td className="text-center py-2 text-gray-800 dark:text-white font-semibold" colSpan={6}>
+                        <td className="text-center py-2 text-gray-800 dark:text-white font-semibold" colSpan={10}>
                             No Invoice Found
                         </td>
                     </tr>

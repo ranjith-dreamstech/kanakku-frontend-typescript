@@ -6,7 +6,7 @@ import TableRow from "@components/admin/TableRow";
 import Constants from "@constants/api";
 import type { RootState } from "@store/index";
 import axios from "axios";
-import { CirclePlusIcon, Edit, Trash2Icon } from "lucide-react";
+import { CirclePlusIcon, Edit, ReceiptIcon, ReceiptTextIcon, Trash2Icon } from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
@@ -127,6 +127,11 @@ const QuotationList: React.FC = () => {
 
     const tableActions = [
         {
+            label: 'Convert to Invoice',
+            icon: <ReceiptIcon size={14} />,
+            onClick: (item: Quotation) => { handleConvertToInvoiceClick(item) }
+        },
+        {
             label: 'Edit',
             icon: <Edit size={14} />,
             onClick: (item: Quotation) => { handleEditClick(item) }
@@ -146,6 +151,17 @@ const QuotationList: React.FC = () => {
         setShowDeleteModal(true);
     }
 
+    const handleConvertToInvoiceClick = async (item: Quotation) => {
+        try {
+            await axios.post(`${Constants.CONVERT_QUOTATION_TO_INVOICE_URL}/${item.id}`,
+                {}, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            toast.success('Quotation converted to invoice successfully');
+        } catch (error) {   
+            toast.error('Failed to convert quotation to invoice.');
+        }
+    }
     const confirmDelete = async () => {
         try {
             await axios.delete(`${Constants.DELETE_QUOTATION_URL}/${itemToDelete?.id}`, {

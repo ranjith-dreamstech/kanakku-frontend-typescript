@@ -115,9 +115,9 @@ const PaymentFormModal: FC<PaymentFormModalProps> = ({ isOpen, onClose, onConfir
 
         if (field === 'purchaseId') {
             const selectedPurchase = purchases.find(p => p.id === value);
-            if(selectedPurchase?.payment){
+            if (selectedPurchase?.payment) {
                 newFormData.amount = selectedPurchase?.payment?.dueAmount || 0;
-            }else{
+            } else {
                 newFormData.amount = selectedPurchase?.totalAmount || 0;
             }
             newFormData.supplierId = selectedPurchase?.vendor.id || '';
@@ -126,9 +126,9 @@ const PaymentFormModal: FC<PaymentFormModalProps> = ({ isOpen, onClose, onConfir
         if (field === 'paidAmount') {
             if (Number(value) > newFormData.amount) {
                 setErrors(prev => ({ ...prev, paidAmount: 'Paid amount cannot exceed total amount.' }));
-            } else if(Number(value) < 1) {
+            } else if (Number(value) < 1) {
                 setErrors(prev => ({ ...prev, paidAmount: 'Paid amount must be greater than 0.' }));
-            }else {
+            } else {
                 const newErrors = { ...errors };
                 delete newErrors.paidAmount;
                 setErrors(newErrors);
@@ -155,11 +155,19 @@ const PaymentFormModal: FC<PaymentFormModalProps> = ({ isOpen, onClose, onConfir
         if (!validateForm()) return;
 
         const apiData = new FormData();
+
         apiData.append('purchaseId', formData.purchaseId);
         apiData.append('supplierId', formData.supplierId);
         apiData.append('dueAmount', String(formData.amount - formData.paidAmount));
         apiData.append('referenceNumber', formData.referenceNumber);
-        apiData.append('paymentDate', formData.paymentDate!.toISOString().split('T')[0]);
+        if (formData.paymentDate instanceof Date) {
+            const year = formData.paymentDate.getFullYear();
+            const month = String(formData.paymentDate.getMonth() + 1).padStart(2, "0");
+            const day = String(formData.paymentDate.getDate()).padStart(2, "0");
+
+            apiData.append("paymentDate", `${year}-${month}-${day}`);
+        }
+
         apiData.append('amount', String(formData.amount));
         apiData.append('paidAmount', String(formData.paidAmount));
         apiData.append('paymentMode', formData.paymentMode);

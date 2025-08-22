@@ -46,7 +46,7 @@ export const ActionMenu = <T,>({ row, actions }: ActionMenuProps<T>) => {
     <div
       ref={menuRef}
       style={{ top: `${position.top}px`, left: `${position.left}px` }}
-      className="fixed w-32 bg-white rounded-md shadow-lg border border-gray-200 z-50"
+      className="fixed min-w-[128px] bg-white rounded-md shadow-lg border border-gray-200 z-50"
     >
       <ul className="py-1">
         {actions.map((action) => (
