@@ -27,6 +27,7 @@ interface Product {
     name: string;
     code: string;
     product_image: string;
+    productImageUrl: string;
     selling_price: number;
     status: boolean;
     brand: Brand | null;
@@ -172,7 +173,7 @@ const ProductList: FC = () => {
                             <td className="px-4 py-2">{(page - 1) * limit + index + 1}</td>
                             <td className="font-semibold px-4 py-2 text-gray-700 dark:text-gray-300">
                                 <div className="flex items-center space-x-3">
-                                    <img src={product.product_image} alt={product.name} className="w-10 h-10 rounded-full object-cover border dark:border-gray-600" />
+                                    <img src={product.productImageUrl} alt={product.name} className="w-10 h-10 rounded-full object-contain border dark:border-gray-600" />
                                     <div>
                                         <span>{product.name}</span>
                                         <p className="text-xs text-gray-500 font-normal">{product.code}</p>

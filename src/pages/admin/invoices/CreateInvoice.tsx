@@ -548,7 +548,11 @@ const CreateInvoice: React.FC = () => {
                 formData.append('signatureImage', file);
 
             } else if (value instanceof Date) {
-                formData.append(key, value.toISOString().split('T')[0]);
+                const year = value.getFullYear();
+                const month = String(value.getMonth() + 1).padStart(2, "0");
+                const day = String(value.getDate()).padStart(2, "0");
+
+                formData.append(key, `${year}-${month}-${day}`);
 
             } else if (Array.isArray(value) && key === 'items') {
                 value.forEach((item, index) => {
@@ -563,7 +567,7 @@ const CreateInvoice: React.FC = () => {
                 formData.append(key, String(value));
             }
         });
-
+        
         try {
             await axios.post(Constants.CREATE_NEW_INVOICE_URL, formData, {
                 headers: {

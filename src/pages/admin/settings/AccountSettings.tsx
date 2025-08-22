@@ -25,9 +25,9 @@ interface ApiProfile {
     gender: 'male' | 'female' | 'other' | '';
     dateOfBirth: string; // Stored as 'YYYY-MM-DD'
     address: string;
-    country: number|string|null;
-    state: number|string|null;
-    city: number|string|null;
+    country: number | string | null;
+    state: number | string | null;
+    city: number | string | null;
     postalCode: string;
 }
 
@@ -93,7 +93,16 @@ const AccountSettings: React.FC = () => {
                 const fetchedProfile: Profile = {
                     ...data,
                     profileImage: data.profileImage || '',
-                    dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth).toISOString().split('T')[0] : '',
+                    dateOfBirth: data.dateOfBirth
+                        ? (() => {
+                            const d = new Date(data.dateOfBirth);
+                            const year = d.getFullYear();
+                            const month = String(d.getMonth() + 1).padStart(2, "0");
+                            const day = String(d.getDate()).padStart(2, "0");
+                            return `${year}-${month}-${day}`;
+                        })()
+                        : "",
+
                 };
 
                 setProfile(fetchedProfile);
@@ -260,12 +269,12 @@ const AccountSettings: React.FC = () => {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             setSavingProfile(false);
-            setFormErrors({});      
+            setFormErrors({});
             toast.success('Profile updated successfully.');
             scrollToTop();
         } catch (error) {
             const AxiosError = error as AxiosError<{ errors: FormErrors }>;
-            if(AxiosError?.response?.data?.errors) setFormErrors(AxiosError.response.data.errors);
+            if (AxiosError?.response?.data?.errors) setFormErrors(AxiosError.response.data.errors);
             setSavingProfile(false);
         }
     };

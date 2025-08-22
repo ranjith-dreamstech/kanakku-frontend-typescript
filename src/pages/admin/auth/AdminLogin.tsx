@@ -135,7 +135,7 @@ const LoginPage: React.FC = () => {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full px-4 py-3 text-lg font-semibold text-white bg-purple-600 rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:bg-purple-400 disabled:cursor-not-allowed transition-all duration-300 ease-in-out"
+            className="w-full px-4 py-3 text-lg font-semibold text-white bg-purple-600 rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:bg-purple-400 disabled:cursor-not-allowed transition-all duration-300 ease-in-out cursor-pointer"
           >
             {isLoading ? 'Logging in...' : 'Login'}
           </button>
@@ -148,7 +148,7 @@ const LoginPage: React.FC = () => {
                     <p><span className="font-medium">Email:</span> admin@dreamstechnologies.com</p>
                     <p><span className="font-medium">Password:</span> Demo123$</p>
                 </div>
-                <button onClick={handleCopy} className="p-2 text-gray-500 hover:text-purple-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500">
+                <button onClick={handleCopy} className="p-2 text-gray-500 hover:text-purple-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer">
                     {isCopied ? <Check className="text-green-500" size={20} /> : <Copy size={20} />}
                 </button>
             </div>

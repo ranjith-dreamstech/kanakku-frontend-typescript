@@ -36,6 +36,7 @@ import AdminLogout from "@pages/admin/auth/AdminLogout";
 import InvoiceTemplateList from "@pages/admin/invoices/InvoiceTemplateList";
 import CreateInvoice from "@pages/admin/invoices/CreateInvoice";
 import InvoiceList from "@pages/admin/invoices/InvoiceList";
+import EditInvoice from "@pages/admin/invoices/EditInvoice";
 
 const AdminRoute = () => {
     return (
@@ -57,6 +58,7 @@ const AdminRoute = () => {
                     {/* Invoices Routes */}
                     <Route path="/invoices" element={<InvoiceList />} />
                     <Route path="/create-invoice" element={<CreateInvoice />} />
+                    <Route path="/edit-invoice/:invoiceId" element={<EditInvoice />} />
                     <Route path="/invoice-templates" element={<InvoiceTemplateList />} />
                     
                     {/* Quotations Routes */}

@@ -11,31 +11,56 @@ import Modal from '@components/admin/Modal';
 import SignatureCanvas from 'react-signature-canvas';
 import { toWords } from 'number-to-words';
 import { toast } from 'react-toastify';
-import { useNavigate } from 'react-router-dom';
-import PaymentModal from '@pages/admin/purchases/PaymentModal';
+import { useNavigate, useParams } from 'react-router-dom';
+import CreateSupplierForm from '@pages/admin/purchases/CreateSupplierForm';
+import Switch from '@components/admin/Switch';
 
-// --- INTERFACES ---
 
 interface User {
     id: string;
     name: string;
 }
 
-interface DebitNoteFormData {
-    purchaseId?: string;
-    userId: string;
+interface Customer extends User {
+    id: string;
+    name: string;
+    email: string;
+    phone: string;
+    status: string;
+    image: string | null;
+    billingAddress: {
+        name: string;
+        addressLine1: string;
+        addressLine2: string;
+        city: string;
+        state: string;
+        country: string;
+        pincode: string;
+    };
+    shippingAddress: {
+        name: string;
+        addressLine1: string;
+        addressLine2: string;
+        city: string;
+        state: string;
+        country: string;
+        pincode: string;
+    };
+}
+interface InvoiceFormData {
+    referenceNo: string;
+    invoiceDate: Date | null;
+    dueDate: Date | null;
+    status: string;
+    isRecurring: boolean;
+    recurring: 'daily' | 'weekly' | 'monthly' | 'yearly' | null;
+    recurringDuration: string | null;
     billFrom: string;
     billTo: string;
-    referenceNo: string;
-    debitNoteDate: Date | null;
-    status: string;
     items: productItem[];
     notes: string;
     termsAndCondition: string;
-    paymentMode: string;
-    paymentModeSlug: string;
-    checkNumber?: string;
-    bank?: string | null;
+    bank: string | null;
     sign_type: 'digitalSignature' | 'eSignature';
     signatureId: string | null;
     signatureName: string;
@@ -44,14 +69,6 @@ interface DebitNoteFormData {
     totalTax: number | null;
     totalDiscount: number | null;
     grandTotal: number | null;
-    sp_referenceNumber?: string;
-    sp_paymentDate?: Date | null;
-    sp_paymentMode?: string;
-    sp_amount?: number;
-    sp_paid_amount?: number;
-    sp_due_amount?: number;
-    sp_notes?: string | null;
-    sp_attachment?: File | null;
 }
 
 interface selectedAdmin {
@@ -69,22 +86,6 @@ interface selectedAdmin {
     companyLogo: File | null;
     fax: string;
     userId: string | null;
-}
-
-interface selectedSupplier {
-    id: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-    phone: string;
-    user_type: number;
-    profileImage: string;
-    dateOfBirth: string;
-    address: string;
-    country: string | null;
-    state: string | null;
-    city: string | null;
-    postalCode: string;
 }
 
 interface Product {
@@ -137,56 +138,36 @@ interface IBankAccount {
     name: string;
 }
 
-interface IPaymentMode {
-    id: string;
-    name: string;
-    slug: string;
-}
-interface PurchaseOrder {
-    id: string;
-    name: string;
-}
-
-interface PaymentModalData {
-    sp_referenceNumber: string;
-    sp_paymentDate: string;
-    sp_paymentMode: string;
-    sp_amount: number;
-    sp_paid_amount: number;
-    sp_due_amount: number;
-    sp_notes?: string | null;
-    sp_attachment?: File | null;
-}
-const CreateDebitNote: React.FC = () => {
+const EditInvoice: React.FC = () => {
     const navigate = useNavigate();
-    const { token, user } = useSelector((state: RootState) => state.auth);
+    const { token } = useSelector((state: RootState) => state.auth);
+    const { invoiceId } = useParams<{ invoiceId: string }>();
     const [adminUsers, setAdminUsers] = useState<User[]>([]);
-    const [suppliers, setSuppliers] = useState<User[]>([]);
+    const [customers, setCustomers] = useState<Customer[]>([]);
     const [products, setProducts] = useState<Product[]>([]);
     const [productSearchInput, setProductSearchInput] = useState<string>('');
-    const [isProductLoading, setIsProductLoading] = useState<boolean>(false);
     const debouncedSearchTerm = useDebounce(productSearchInput, 500);
-    const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+    const [customerSearchInput, setCustomerSearchInput] = useState<string>('');
+    const debouncedSearchTermCustomer = useDebounce(customerSearchInput, 500);
+
     const [selectedAdmin, setSelectedAdmin] = useState<User | null>(null);
-    const [selectedSupplier, setSelectedSupplier] = useState<User | null>(null);
+    const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
     const [companyDetails, setCompanyDetails] = useState<selectedAdmin | null>(null);
-    const [supplierDetails, setSupplierDetails] = useState<selectedSupplier | null>(null);
-    const [paymentModes, setPaymentModes] = useState<IPaymentMode[]>([]);
-    const [purchases, setPurchases] = useState<PurchaseOrder[]>([]);
-    const [debitNoteFormData, setDebitNoteFormData] = useState<DebitNoteFormData>({
-        purchaseId: '',
-        userId: user?.id || '',
+    const [customerDetails, setCustomerDetails] = useState<Customer | null>(null);
+    const [isSupplierModalOpen, setIsSupplierModalOpen] = useState(false);
+    const [invoiceFormData, setInvoiceFormData] = useState<InvoiceFormData>({
+        referenceNo: '',
+        invoiceDate: null,
+        dueDate: null,
+        status: 'DRAFT',
+        isRecurring: false,
+        recurring: null,
+        recurringDuration: null,
         billFrom: '',
         billTo: '',
-        referenceNo: '',
-        debitNoteDate: null,
-        status: '',
         items: [],
         notes: '',
         termsAndCondition: '',
-        paymentMode: '',
-        paymentModeSlug: '',
-        checkNumber: '',
         bank: null,
         sign_type: 'digitalSignature',
         signatureId: null,
@@ -195,15 +176,43 @@ const CreateDebitNote: React.FC = () => {
         subTotal: null,
         totalTax: null,
         totalDiscount: null,
-        grandTotal: null,
-        sp_referenceNumber: '',
-        sp_paymentDate: null,
-        sp_paymentMode: '',
-        sp_amount: 0,
-        sp_paid_amount: 0,
-        sp_due_amount: 0,
+        grandTotal: null
     });
 
+    const invoiceStatuses = [
+        { id: 'DRAFT', name: 'Draft' },
+        { id: 'UNPAID', name: 'Unpaid' },
+        { id: 'PAID', name: 'Paid' },
+        { id: 'PARTIALLY_PAID', name: 'Partially Paid' },
+        { id: 'OVERDUE', name: 'Overdue' },
+        { id: 'CANCELLED', name: 'Cancelled' }
+    ]
+
+    const recurringTypes = [
+        { id: 'daily', name: 'Daily' },
+        { id: 'weekly', name: 'Weekly' },
+        { id: 'monthly', name: 'Monthly' },
+        { id: 'yearly', name: 'Yearly' }
+    ]
+
+    const recurringValues = [
+        { id: '1', name: 'Every Day', recurringType: 'daily' },
+        ...Array.from({ length: 52 }, (_, i) => ({
+            id: String(i + 1),
+            name: `${i + 1} week${i + 1 > 1 ? 's' : ''}`,
+            recurringType: 'weekly'
+        })),
+        ...Array.from({ length: 12 }, (_, i) => ({
+            id: String(i + 1),
+            name: `${i + 1} month${i + 1 > 1 ? 's' : ''}`,
+            recurringType: 'monthly'
+        })),
+        ...Array.from({ length: 10 }, (_, i) => ({
+            id: String(i + 1),
+            name: `${i + 1} year${i + 1 > 1 ? 's' : ''}`,
+            recurringType: 'yearly'
+        }))
+    ];
     // Edit Modal State
     const [isEditProductModalOpen, setIsEditProductModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState<productItem | null>(null);
@@ -218,97 +227,78 @@ const CreateDebitNote: React.FC = () => {
     const sigPadRef = useRef<SignatureCanvas>(null);
 
     useEffect(() => {
-        fetchPaymentModes();
-        fetchAdminUsers();
-        fetchSuppliers();
-        fetchTaxes();
-        fetchBankAccounts();
-        fetchManualSignatures();
-        fetchPurchaseOrders();
+        const fetchDropdownData = async () => {
+            await fetchAdminUsers();
+            await fetchTaxes();
+            await fetchBankAccounts();
+            await fetchManualSignatures();
+            await fetchInvoiceForEdit();
+        }
+
+        fetchDropdownData();
     }, []);
 
-    useEffect(() => {
-        if (debitNoteFormData.purchaseId) fetchPurchase();
-    }, [debitNoteFormData.purchaseId]);
-
-    const fetchPurchase = async () => {
+    const fetchInvoiceForEdit = async () => {
         try {
-            const response = await axios.get(`${Constants.GET_PURCHASE_DETAILS_URL}/${debitNoteFormData.purchaseId}`, {
-                headers: { 'Authorization': `Bearer ${token}` },
-            });
-            
-            const data = response.data.data;
-
-            if (data) {
-                if (data.billTo) {
-                    let _supplier = { id: data.billTo.id, name: data.billTo.name };
-                    // setSelectedSupplier(_supplier);
-                    handleSupplierChange(_supplier);
+            const response = await axios.get(
+                `${Constants.FETCH_INVOICE_FOR_EDIT_URL}/${invoiceId}`,
+                {
+                    headers: { Authorization: `Bearer ${token}` },
                 }
+            );
 
-                if (data.billFrom) {
-                    let _admin = { id: data.billFrom.id, name: data.billFrom.name };
-                    // setSelectedAdmin(_admin);
+            const invoiceData = response.data?.data;
+
+            if (invoiceData) {
+                console.log("invoiceData", invoiceData);
+                console.log("referenceNo", invoiceData.referenceNo);
+                console.log('invoiceDate', invoiceData.invoiceDate);
+                console.log('dueDate', invoiceData.dueDate);
+                setInvoiceFormData((prev) => ({
+                    ...prev,
+                    referenceNo: invoiceData.referenceNo ?? '',
+                    invoiceDate: invoiceData.invoiceDate ? new Date(invoiceData.invoiceDate) : null,
+                    dueDate: invoiceData.dueDate ? new Date(invoiceData.dueDate) : null,
+                    status: invoiceData.status,
+                    isRecurring: invoiceData.isRecurring,
+                    recurring: invoiceData.recurring,
+                    recurringDuration: invoiceData.recurringDuration,
+                    billFrom: invoiceData.billFrom.id,
+                    billTo: invoiceData.billTo.id,
+                    items: invoiceData.items,
+                    notes: invoiceData.notes,
+                    termsAndCondition: invoiceData.termsAndCondition,
+                    bank: invoiceData.bank?.id,
+                    sign_type: invoiceData.sign_type,
+                    signatureId: invoiceData.signature?.id,
+                    signatureName: invoiceData.signature?.name,
+                    esignDataUrl: invoiceData.signature?.image,
+                    subTotal: invoiceData.taxableAmount,
+                    totalTax: invoiceData.vat,
+                    totalDiscount: invoiceData.totalDiscount,
+                    grandTotal: invoiceData.TotalAmount
+                }));
+
+                if (invoiceData.billFrom) {
+                    let _admin = { id: invoiceData.billFrom.id, name: invoiceData.billFrom.name };
+                    console.log("_admin", _admin);
                     handleAdminChange(_admin);
                 }
-
-                if (data.bank) {
-                    setBankAccounts((prev) => {
-                        const exists = prev.find(bank => bank.id === data.bank.id);
-                        if (exists) return prev;
-                        return [...prev, { id: data.bank.id, name: data.bank.bankName }];
-                    });
+                if (invoiceData.billTo) {
+                    let _customer = {
+                        id: invoiceData.billTo.id,
+                        name: invoiceData.billTo.name,
+                        email: invoiceData.billTo.email,
+                        phone: invoiceData.billTo.phone,
+                        image: invoiceData.billTo.image
+                    };
+                    handleCustomerChange(_customer);
                 }
-
-                setDebitNoteFormData(prev => ({
-                    ...prev,
-                    _id: data.id,
-                    userId: user?.id || '',
-                    billFrom: data.billFrom?.id || '',
-                    billTo: data.billTo?.id || '',
-                    referenceNo: data.referenceNo || '',
-                    debitNoteDate: data.purchaseDate ? new Date(data.purchaseDate) : null,
-                    status: data.status || '',
-                    items: data.items || [],
-                    notes: data.notes || '',
-                    termsAndCondition: data.termsAndCondition || '',
-                    bank: data.bank?.id || null,
-                    sign_type: data.sign_type || 'digitalSignature',
-                    signatureId: data.signature?.id || null,
-                    signatureName: data.signature?.name || '',
-                    esignDataUrl: data.signature?.image || null
-                }));
-                console.log(data);
-                
             }
         } catch (error) {
-            console.error('Error fetching purchase order:', error);
+            console.error("Error fetching invoice for edit:", error);
         }
-    }
-    const fetchPurchaseOrders = async () => {
-        try {
-            const response = await axios.get(Constants.FETCH_ALL_PURCHASE_FOR_DEBIT_NOTE_URL, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const data = response.data.data;
-            if (data.length > 0) {
-                const formattedPurchases = data.map((order: any) => ({ id: order.id, name: order.purchaseId }));
 
-                setPurchases(formattedPurchases);
-            }
-        } catch (error) {
-            console.error('Error fetching purchase orders:', error);
-        }
-    }
-    const fetchPaymentModes = async () => {
-        try {
-            const response = await axios.get(Constants.GET_ALL_PAYMENT_MODES_URL, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            setPaymentModes(response.data.data);
-        } catch (error) {
-            console.error('Error fetching payment modes:', error);
-        }
     }
     const fetchTaxes = async () => {
         if (!token) return;
@@ -374,45 +364,35 @@ const CreateDebitNote: React.FC = () => {
             const response = await axios.get(`${Constants.FETCH_COMPANY_SETTINGS_URL}/${user.id}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            //set billFrom to prev debitNoteFormData
-            setDebitNoteFormData(prev => ({ ...prev, billFrom: user.id }));
+            //set billFrom to formData
+            setInvoiceFormData(prev => ({ ...prev, billFrom: user.id }));
             setCompanyDetails(response.data.data);
         } catch (error) {
             setCompanyDetails(null);
         }
     };
 
-    const handleSupplierChange = async (user: User) => {
-        setSelectedSupplier(user);
-        try {
-            const response = await axios.get(`${Constants.FETCH_USER_BY_ID_URL}/${user.id}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            //set billTo to prev formData
-            setDebitNoteFormData(prev => ({ ...prev, billTo: user.id }));
-            setSupplierDetails(response.data.data);
-        } catch (error) {
-            setSupplierDetails(null);
-        }
+    const handleCustomerChange = async (user: Customer) => {
+        setSelectedCustomer(user);
+        setInvoiceFormData(prev => ({ ...prev, billTo: user.id }));
+        setCustomerDetails(user);
     };
 
     useEffect(() => {
         const fetchProductsByQuery = async () => {
+            console.log('items', invoiceFormData.items);
             if (debouncedSearchTerm) {
-                setIsProductLoading(true);
                 try {
                     const response = await axios.get(`${Constants.FETCH_PRODUCTS_WITH_SEARCH_URL}?search=${debouncedSearchTerm}`, {
                         headers: { 'Authorization': `Bearer ${token}` }
                     });
                     const availableProducts = response.data.data.filter(
-                        (product: Product) => debitNoteFormData.items.every((item: productItem) => item.id !== product.id)
+                        (product: Product) => invoiceFormData.items.every((item: productItem) => item.id !== product.id)
                     );
                     setProducts(availableProducts);
                 } catch (error) {
                     console.error('Error fetching products:', error);
                     setProducts([]);
-                } finally {
-                    setIsProductLoading(false);
                 }
             } else {
                 setProducts([]);
@@ -422,8 +402,8 @@ const CreateDebitNote: React.FC = () => {
     }, [debouncedSearchTerm, token]);
 
     // --- ITEM & FORM HANDLERS ---
-    const handleFormChange = (field: keyof DebitNoteFormData, value: any) => {
-        setDebitNoteFormData(prev => ({ ...prev, [field]: value }));
+    const handleFormChange = (field: keyof InvoiceFormData, value: any) => {
+        setInvoiceFormData(prev => ({ ...prev, [field]: value }));
     };
 
     const handleProductChange = (product: Product) => {
@@ -452,11 +432,11 @@ const CreateDebitNote: React.FC = () => {
             discount_value: discountValue,
             amount: (sellingPrice * 1) - productDiscount + productTax,
         };
-        handleFormChange('items', [...debitNoteFormData.items, newItem]);
+        handleFormChange('items', [...invoiceFormData.items, newItem]);
     };
 
     const handleRemoveItem = (itemToRemove: productItem) => {
-        handleFormChange('items', debitNoteFormData.items.filter(item => item.id !== itemToRemove.id));
+        handleFormChange('items', invoiceFormData.items.filter(item => item.id !== itemToRemove.id));
     };
 
     const handleEditItem = (itemToEdit: productItem) => {
@@ -480,21 +460,18 @@ const CreateDebitNote: React.FC = () => {
 
             const subtotal = qty * rate;
 
-            // ✅ Row-level discount
             const discountAmount = discount_type === 'Percentage'
                 ? (subtotal * (discount_value || 0)) / 100
                 : (discount_value || 0);
 
             const discountedSubtotal = subtotal - discountAmount;
 
-            // ✅ Tax per unit
             const selectedTaxGroup = taxes.find(t => String(t._id) === String(tax_group_id));
             const taxRate = selectedTaxGroup?.total_tax_rate || 0;
             const taxPerUnit = (rate * taxRate) / 100;
 
             const totalTax = taxPerUnit * qty;
 
-            // ✅ Final amount
             const newAmount = discountedSubtotal + totalTax;
 
             return {
@@ -510,7 +487,7 @@ const CreateDebitNote: React.FC = () => {
 
     const handleUpdateItem = () => {
         if (!editingItem) return;
-        const updatedItems = debitNoteFormData.items.map(item =>
+        const updatedItems = invoiceFormData.items.map(item =>
             item.id === editingItem.id ? editingItem : item
         );
         handleFormChange('items', updatedItems);
@@ -530,29 +507,25 @@ const CreateDebitNote: React.FC = () => {
 
     // --- DYNAMIC CALCULATIONS ---
     const { subTotal, totalTax, totalDiscount, grandTotal } = useMemo(() => {
-        const totals = debitNoteFormData.items.reduce((acc, item) => {
+        const totals = invoiceFormData.items.reduce((acc, item) => {
             acc.subTotal += item.rate * item.qty;
             acc.totalDiscount += item.discount;
             acc.totalTax += item.tax;
             return acc;
         }, { subTotal: 0, totalTax: 0, totalDiscount: 0 });
         let grand_total = totals.subTotal - totals.totalDiscount + totals.totalTax;
-        console.log('totals', totals);
-        
-        setDebitNoteFormData(prev => ({ ...prev, subTotal: totals.subTotal, totalTax: totals.totalTax, totalDiscount: totals.totalDiscount, grandTotal: grand_total }));
+        setInvoiceFormData(prev => ({ ...prev, subTotal: totals.subTotal, totalTax: totals.totalTax, totalDiscount: totals.totalDiscount, grandTotal: grand_total }));
         return { ...totals, grandTotal: grand_total };
-    }, [debitNoteFormData.items]);
+    }, [invoiceFormData.items]);
 
     const totalInWords = useMemo(() => {
-        console.log("grandTotal", grandTotal);
-        
-        if (grandTotal && grandTotal <= 0) return 'Zero';
+        if (grandTotal <= 0) return 'Zero';
         return toWords(grandTotal).replace(/,/g, '').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ') + ' Only';
     }, [grandTotal]);
 
     const selectedManualSignatureImage = useMemo(() => {
-        return manualSignatures.find(sig => sig.id === debitNoteFormData.signatureId)?.imageUrl || null;
-    }, [debitNoteFormData.signatureId, manualSignatures]);
+        return manualSignatures.find(sig => sig.id === invoiceFormData.signatureId)?.imageUrl || null;
+    }, [invoiceFormData.signatureId, manualSignatures]);
 
 
     const fetchAdminUsers = async () => {
@@ -571,52 +544,58 @@ const CreateDebitNote: React.FC = () => {
         }
     };
 
-    const fetchSuppliers = async () => {
-        try {
-            const response = await axios.get(`${Constants.FETCH_USERS_URL}/2`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (response.data.data.length > 0) {
-                const formattedSuppliers = response.data.data.map((supplier: any) => ({ id: supplier.id, name: `${supplier.firstName} ${supplier.lastName}` }));
-                setSuppliers(formattedSuppliers);
-            } else {
-                setSuppliers([]);
+    useEffect(() => {
+        const fetchCustomersByQuery = async () => {
+            try {
+                const response = await axios.get(`${Constants.GET_CUSTOMERS_WITH_SEARCH_URL}`, {
+                    params: { search: debouncedSearchTermCustomer, limit: 100, page: 1 },
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                let data = response.data.data;
+                if (data.customers.length > 0) {
+                    setCustomers(response.data.data.customers);
+                } else {
+                    setCustomers([]);
+                }
+            } catch (error) {
+                console.error('Error fetching customers:', error);
             }
-        } catch (error) {
-            console.error('Error fetching suppliers:', error);
         }
-    };
+        fetchCustomersByQuery();
+    }, [debouncedSearchTermCustomer, token]);
 
-    const validateDebitNoteData = () => {
+    const validateQuotationData = () => {
         // Add your validation logic here
         const newErrors: { [key: string]: string } = {};
+        //reference number required
+        if (!invoiceFormData.referenceNo.trim()) newErrors.referenceNo = 'Reference number is required.';
         //order date required
-        if (!debitNoteFormData.debitNoteDate) newErrors.debitNoteDate = 'Order date is required.';
+        if (!invoiceFormData.invoiceDate) newErrors.invoiceDate = 'Invoice date is required.';
         //status required
-        if (!debitNoteFormData.status.trim()) newErrors.status = 'Status is required.';
-        //billFrom required
-        if (!debitNoteFormData.billFrom.trim()) newErrors.billFrom = 'Bill from is required.';
-        //billTo required
-        if (!debitNoteFormData.billTo.trim()) newErrors.billTo = 'Bill to is required.';
-        //atleast 1 item required
-        if (debitNoteFormData.items.length === 0) newErrors.items = 'At least one item is required.';
-        //sign_type if manual then signatureId required
-        if (debitNoteFormData.sign_type === 'digitalSignature' && !debitNoteFormData.signatureId) newErrors.signatureId = 'Manual signature is required.';
-        //sign_type if esignature then signatureName required
-        if (debitNoteFormData.sign_type === 'eSignature' && !debitNoteFormData.signatureName.trim()) newErrors.signatureName = 'Esignature name is required.';
-        if (debitNoteFormData.sign_type === 'eSignature' && !debitNoteFormData.esignDataUrl) newErrors.esignDataUrl = 'Esignature is required.';
-
-        //if status paid then paymentDate, paymentMode and amount required open modal
-        if (debitNoteFormData.status === 'paid' && (!debitNoteFormData.sp_paymentDate || !debitNoteFormData.sp_paymentMode || !debitNoteFormData.sp_amount)) {
-            newErrors.status = 'Payment details are required.';
-            setIsPaymentModalOpen(true);
+        if (!invoiceFormData.status.trim()) newErrors.status = 'Status is required.';
+        //if recurring enabled then recurring type, duration required
+        if (invoiceFormData.isRecurring) {
+            if (!invoiceFormData.recurring?.trim()) newErrors.recurring = 'Recurring type is required.';
+            if (!invoiceFormData.recurringDuration) newErrors.recurringDuration = 'Recurring duration is required.';
         }
+        //billFrom required
+        if (!invoiceFormData.billFrom.trim()) newErrors.billFrom = 'Bill from is required.';
+        //billTo required
+        if (!invoiceFormData.billTo.trim()) newErrors.billTo = 'Bill to is required.';
+        //atleast 1 item required
+        if (invoiceFormData.items.length === 0) newErrors.items = 'At least one item is required.';
+        //sign_type if manual then signatureId required
+        if (invoiceFormData.sign_type === 'digitalSignature' && !invoiceFormData.signatureId) newErrors.signatureId = 'Manual signature is required.';
+        //sign_type if esignature then signatureName required
+        if (invoiceFormData.sign_type === 'eSignature' && !invoiceFormData.signatureName.trim()) newErrors.signatureName = 'Esignature name is required.';
+        if (invoiceFormData.sign_type === 'eSignature' && !invoiceFormData.esignDataUrl) newErrors.esignDataUrl = 'Esignature is required.';
         setFormErrors(newErrors);
         return newErrors;
     }
-    const saveDebitNote = async (e: React.FormEvent) => {
+    const saveQuotation = async (e: React.FormEvent) => {
         e.preventDefault();
-        const errors = validateDebitNoteData();
+
+        const errors = validateQuotationData();
 
         if (Object.keys(errors).length > 0) {
             const firstErrorField = Object.keys(errors)[0];
@@ -627,12 +606,11 @@ const CreateDebitNote: React.FC = () => {
 
         const formData = new FormData();
 
-        for (const [key, value] of Object.entries(debitNoteFormData)) {
-            if (key === 'esignDataUrl' && debitNoteFormData.sign_type === 'eSignature') {
-                const file = await dataURLtoFile(value, 'signature.png');
-                if (file) {
-                    formData.append('signatureImage', file);
-                }
+        Object.entries(invoiceFormData).forEach(([key, value]) => {
+            if (key === 'esignDataUrl' && invoiceFormData.sign_type === 'eSignature') {
+                const file = dataURLtoFile(value, 'signature.png');
+                formData.append('signatureImage', file);
+
             } else if (value instanceof Date) {
                 const year = value.getFullYear();
                 const month = String(value.getMonth() + 1).padStart(2, "0");
@@ -647,22 +625,22 @@ const CreateDebitNote: React.FC = () => {
                         }
                     });
                 });
+
             } else if (typeof value !== 'object' && value !== undefined && value !== null) {
                 formData.append(key, String(value));
             }
-        }
-
+        });
 
         try {
-            await axios.post(Constants.CREATE_DEBIT_NOTE_URL, formData, {
+            await axios.put(`${Constants.UPDATE_INVOICE_URL}/${invoiceId}`, formData, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                     'Content-Type': 'multipart/form-data',
                 },
             });
 
-            toast.success('Debit note created successfully.');
-            navigate('/admin/debit-notes');
+            toast.success('Invoice updated successfully.');
+            navigate('/admin/invoices');
         } catch (error: any) {
             if (error.response?.status !== 200 && error.response?.data?.errors) {
                 setFormErrors(error.response.data.errors);
@@ -673,54 +651,28 @@ const CreateDebitNote: React.FC = () => {
     };
 
 
-    const dataURLtoFile = async (input: string, filename: string): Promise<File | null> => {
-        try {
-            if (input.startsWith('data:')) {
-                // Base64 Data URL case
-                const arr = input.split(',');
-                if (arr.length !== 2) return null;
+    const dataURLtoFile = (dataUrl: string, filename: string): File => {
+        const arr = dataUrl.split(',');
+        const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/png';
+        const bstr = atob(arr[1]);
+        let n = bstr.length;
+        const u8arr = new Uint8Array(n);
 
-                const mimeMatch = arr[0].match(/:(.*?);/);
-                const mime = mimeMatch?.[1] || 'image/png';
-                const bstr = atob(arr[1]);
-                const u8arr = new Uint8Array(bstr.length);
-
-                for (let i = 0; i < bstr.length; i++) {
-                    u8arr[i] = bstr.charCodeAt(i);
-                }
-
-                return new File([u8arr], filename, { type: mime });
-            } else if (input.startsWith('http') || input.startsWith('/')) {
-                // Normal URL case (fetch the image)
-                const response = await fetch(input);
-                if (!response.ok) return null;
-
-                const blob = await response.blob();
-                const mime = blob.type || 'image/png';
-                return new File([blob], filename, { type: mime });
-            }
-
-            return null;
-        } catch {
-            return null;
+        while (n--) {
+            u8arr[n] = bstr.charCodeAt(n);
         }
+
+        return new File([u8arr], filename, { type: mime });
     };
 
-
-
-    const handlePaymentConfirm = (paymentModalData: DebitNoteFormData) => {
-        //set with previous data
-        setDebitNoteFormData(prev => ({ ...prev, ...paymentModalData }));
-        setIsPaymentModalOpen(false);
-    }
     return (
         <div className="p-4 md:p-6 bg-white-50 dark:bg-gray-50 dark:bg-gray-900 min-h-screen border border-gray-200 dark:border-gray-700 rounded">
-            <form onSubmit={saveDebitNote}>
+            <form onSubmit={saveQuotation}>
                 <div className="max-w-7xl mx-auto space-y-6">
 
                     {/* Header */}
                     <div className="flex justify-between items-center mb-6">
-                        <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Purchase Details</h1>
+                        <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Invoice Details</h1>
                         <img src="https://kanakku-web-new.dreamstechnologies.com/e4f01b6957284e6a7fcd.svg" alt="" />
                     </div>
                     {/* Top Section: PO Details & Logo */}
@@ -728,42 +680,107 @@ const CreateDebitNote: React.FC = () => {
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 w-full">
                             <div className="w-full">
                                 <label htmlFor="ref-no" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                    Purchase ID
+                                    Reference No <em className='text-red-500'>*</em>
                                 </label>
-                                <SearchableDropdown
-                                    options={purchases}
-                                    placeholder='Select Purchase Order'
-                                    value={purchases.find(order => order.id === debitNoteFormData.purchaseId) ?? null}
-                                    onChange={(e, value) => handleFormChange('purchaseId', (value as PurchaseOrder)?.id || null)}
+                                <input
+                                    type="text"
+                                    id="ref-no"
+                                    placeholder="Enter Reference Number"
+                                    name='referenceNo'
+                                    onChange={(e) => handleFormChange('referenceNo', e.target.value)}
+                                    value={invoiceFormData.referenceNo}
+                                    className="border border-gray-300 mt-1 rounded-md px-4 py-2 w-full dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-600"
                                 />
+                                {formErrors?.referenceNo && <span className="text-red-500 text-sm">{formErrors.referenceNo}</span>}
                             </div>
-                            <div className="w-full mt-1">
+                            <div className="w-full">
                                 <DateInput
-                                    label="Order Date"
-                                    value={debitNoteFormData.debitNoteDate}
-                                    onChange={(newDate) => handleFormChange('debitNoteDate', newDate)}
+                                    label="Invoice Date"
+                                    value={invoiceFormData.invoiceDate}
+                                    onChange={(newDate) => handleFormChange('invoiceDate', newDate)}
                                     isRequired
                                 />
-                                {formErrors?.debitNoteDate && <span className="text-red-500 text-sm">{formErrors.debitNoteDate}</span>}
+                                {formErrors?.invoiceDate && <span className="text-red-500 text-sm">{formErrors.invoiceDate}</span>}
                             </div>
-                            <div className="w-full mt-1">
+                            <div className="w-full">
+                                <DateInput
+                                    label="Due Date"
+                                    value={invoiceFormData.dueDate}
+                                    onChange={(newDate) => handleFormChange('dueDate', newDate)}
+                                    minDate={invoiceFormData.invoiceDate || new Date()}
+                                    isRequired={false}
+                                />
+                                {formErrors?.dueDate && <span className="text-red-500 text-sm">{formErrors.dueDate}</span>}
+                            </div>
+                            <div className="w-full">
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                                     Status <em className='text-red-500'>*</em>
                                 </label>
-                                <select
-                                    name="status"
-                                    onChange={(e) => handleFormChange('status', e.target.value)}
-                                    value={debitNoteFormData.status}
-                                    className="border border-gray-300 rounded-md px-4 py-2 w-full dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-600"
-                                >
-                                    <option>Select</option>
-                                    <option value="new">New</option>
-                                    <option value="paid">Paid</option>
-                                    <option value="partially_paid">Partially Paid</option>
-                                    <option value="pending">Pending</option>
-                                    <option value="cancelled">Cancelled</option>
-                                </select>
+                                <SearchableDropdown
+                                    placeholder="Select Status"
+                                    options={invoiceStatuses}
+                                    value={
+                                        invoiceStatuses.find(
+                                            (option) => option.id === invoiceFormData.status
+                                        ) || null
+                                    }
+                                    onChange={(e, value) => { handleFormChange('status', value?.id || null) }}
+                                />
                                 {formErrors?.status && <span className="text-red-500 text-sm">{formErrors.status}</span>}
+                            </div>
+                        </div>
+                    </div>
+                    {/* Recurring Section */}
+                    <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 pb-2">
+                            Is Recurring <em className="text-red-500">*</em>
+                        </label>
+
+                        {/* Switch */}
+                        <Switch
+                            checked={invoiceFormData.isRecurring ?? false}
+                            onChange={(e) => handleFormChange('isRecurring', e.target.checked)}
+                            name="isRecurring"
+                        />
+
+                        {/* Recurring Type & Duration in One Row */}
+                        <div className="mt-4 flex flex-wrap gap-4">
+                            <div className="flex-1 min-w-[200px]">
+                                <SearchableDropdown
+                                    options={recurringTypes}
+                                    placeholder="Select Recurring Type"
+                                    value={
+                                        recurringTypes.find(
+                                            (option) => option.id === invoiceFormData.recurring
+                                        ) || null
+                                    }
+                                    onChange={(_, value) =>
+                                        handleFormChange('recurring', value?.id || null)
+                                    }
+                                    disabled={!invoiceFormData.isRecurring}
+                                />
+                                {formErrors?.recurring && <span className="text-red-500 text-sm">{formErrors.recurring}</span>}
+                            </div>
+
+                            <div className="flex-1 min-w-[200px]">
+                                <SearchableDropdown
+                                    options={recurringValues.filter(
+                                        (option) =>
+                                            option.recurringType === invoiceFormData.recurring
+                                    )}
+                                    placeholder="Select Recurring Duration"
+                                    value={
+                                        recurringValues.find(
+                                            (option) =>
+                                                option.id == invoiceFormData.recurringDuration
+                                        ) || null
+                                    }
+                                    onChange={(_, value) =>
+                                        handleFormChange('recurringDuration', value?.id || null)
+                                    }
+                                    disabled={!invoiceFormData.isRecurring}
+                                />
+                                {formErrors?.recurringDuration && <span className="text-red-500 text-sm">{formErrors.recurringDuration}</span>}
                             </div>
                         </div>
                     </div>
@@ -809,37 +826,42 @@ const CreateDebitNote: React.FC = () => {
                         <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
                             <div className="flex justify-between items-center">
                                 <h3 className="font-bold text-gray-800 dark:text-white">Bill To <span className='text-red-500'>*</span></h3>
-                                <button className="flex items-center text-sm text-purple-600 dark:text-purple-400 font-semibold">
+                                <button
+                                    type='button'
+                                    onClick={() => setIsSupplierModalOpen(true)}
+                                    className="flex items-center text-sm text-purple-600 dark:text-purple-400 font-semibold cursor-pointer">
                                     <PlusCircle className="h-4 w-4 mr-1" />
                                     Add New
                                 </button>
                             </div>
                             <div className="mt-4">
                                 <SearchableDropdown
-                                    options={suppliers}
-                                    placeholder="Select Supplier"
-                                    value={selectedSupplier}
-                                    onChange={(e, value) => handleSupplierChange(value as User)}
+                                    options={customers}
+                                    placeholder="Select Customer"
+                                    value={selectedCustomer}
+                                    inputValue={customerSearchInput}
+                                    onInputChange={(e, value) => setCustomerSearchInput(value)}
+                                    onChange={(e, value) => { handleCustomerChange(value as Customer); setCustomerSearchInput('') }}
                                 />
                                 {formErrors?.billTo && <span className="text-red-500 text-sm">{formErrors.billTo}</span>}
                                 <p className="mt-2 text-xs text-gray-500 dark:text-gray-400 p-2 bg-gray-50 dark:bg-gray-700/50 rounded-md font-semibold">
-                                    Select supplier to view vendor details
+                                    Select customer to view customer details
                                 </p>
-                                {selectedSupplier && supplierDetails && (
+                                {selectedCustomer && customerDetails && (
                                     <div className="mt-4 flex gap-3 p-4 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-md">
                                         <div className="w-15 h-15 flex items-center justify-center rounded bg-white dark:bg-gray-800 border border-gray-200">
                                             <img
-                                                src={supplierDetails.profileImage || 'https://kanakku-web-new.dreamstechnologies.com/e4f01b6957284e6a7fcd.svg'}
-                                                alt={supplierDetails.firstName}
+                                                src={customerDetails?.image || 'null'}
+                                                alt={customerDetails.name}
                                                 className="w-12 h-12 object-contain"
                                             />
                                         </div>
                                         <div>
                                             <h4 className="font-semibold text-gray-900 dark:text-white uppercase">
-                                                {supplierDetails.firstName + ' ' + supplierDetails.lastName}
+                                                {customerDetails.name}
                                             </h4>
-                                            <p className="text-sm text-gray-600 dark:text-gray-300"><span className='font-semibold'>Email :</span> {supplierDetails.email}</p>
-                                            <p className="text-sm text-gray-500 dark:text-gray-400"><span className='font-semibold'>Phone :</span> {supplierDetails.phone}</p>
+                                            <p className="text-sm text-gray-600 dark:text-gray-300"><span className='font-semibold'>Email :</span> {customerDetails.email}</p>
+                                            <p className="text-sm text-gray-500 dark:text-gray-400"><span className='font-semibold'>Phone :</span> {customerDetails.phone}</p>
                                         </div>
                                     </div>
                                 )}
@@ -879,7 +901,7 @@ const CreateDebitNote: React.FC = () => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {debitNoteFormData.items.map((item) => (
+                                    {invoiceFormData.items.map((item) => (
                                         <tr key={item.id} className="bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700">
                                             <td className="p-3 font-medium">{item.name}</td>
                                             <td className="p-3">{item.unit}</td>
@@ -898,7 +920,7 @@ const CreateDebitNote: React.FC = () => {
                                             </td>
                                         </tr>
                                     ))}
-                                    {debitNoteFormData.items.length === 0 && (
+                                    {invoiceFormData.items.length === 0 && (
                                         <tr className="bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200">
                                             <td className="p-3 font-medium text-center" colSpan={8}>
                                                 No Items Selected
@@ -1037,72 +1059,31 @@ const CreateDebitNote: React.FC = () => {
                         <div className="flex items-center gap-2 mb-4">
                             <button type='button' onClick={() => setActiveInfoTab('notes')} className={`px-4 py-2 text-sm cursor-pointer font-medium rounded-md ${activeInfoTab === 'notes' ? 'bg-purple-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}>Add Notes</button>
                             <button type='button' onClick={() => setActiveInfoTab('termsAndCondition')} className={`px-4 py-2 text-sm cursor-pointer font-medium rounded-md ${activeInfoTab === 'termsAndCondition' ? 'bg-purple-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}>Add Terms & Conditions</button>
-                            <button type='button' onClick={() => setActiveInfoTab('bank')} className={`px-4 py-2 text-sm cursor-pointer font-medium rounded-md ${activeInfoTab === 'bank' ? 'bg-purple-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}>Payment Details</button>
+                            <button type='button' onClick={() => setActiveInfoTab('bank')} className={`px-4 py-2 text-sm cursor-pointer font-medium rounded-md ${activeInfoTab === 'bank' ? 'bg-purple-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}>Bank Details</button>
                         </div>
 
                         {activeInfoTab === 'notes' && (
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Additional Notes</label>
-                                <textarea value={debitNoteFormData.notes} onChange={(e) => handleFormChange('notes', e.target.value)} rows={4} placeholder="Enter Notes" className="border border-gray-300 rounded-md px-4 py-2 w-full dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-600"></textarea>
+                                <textarea value={invoiceFormData.notes} onChange={(e) => handleFormChange('notes', e.target.value)} rows={4} placeholder="Enter Notes" className="border border-gray-300 rounded-md px-4 py-2 w-full dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-600"></textarea>
                             </div>
                         )}
                         {activeInfoTab === 'termsAndCondition' && (
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Terms & Conditions</label>
-                                <textarea value={debitNoteFormData.termsAndCondition} onChange={(e) => handleFormChange('termsAndCondition', e.target.value)} rows={4} placeholder="Enter Terms & Conditions" className="border border-gray-300 rounded-md px-4 py-2 w-full dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-600"></textarea>
+                                <textarea value={invoiceFormData.termsAndCondition} onChange={(e) => handleFormChange('termsAndCondition', e.target.value)} rows={4} placeholder="Enter Terms & Conditions" className="border border-gray-300 rounded-md px-4 py-2 w-full dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-600"></textarea>
                             </div>
                         )}
                         {activeInfoTab === 'bank' && (
-                            <>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                        Payment Mode
-                                    </label>
-                                    <SearchableDropdown
-                                        options={paymentModes}
-                                        placeholder="Select Payment Mode"
-                                        value={paymentModes.find((mode) => mode.id === debitNoteFormData.paymentMode) || null}
-                                        onChange={(e, value) => {
-                                            const selectedMode = value as IPaymentMode;
-                                            handleFormChange('paymentMode', selectedMode?.id || null);
-                                            handleFormChange('paymentModeSlug', selectedMode?.slug || null);
-                                        }}
-                                    />
-                                </div>
-
-                                {debitNoteFormData.paymentModeSlug === 'cheque' && (
-                                    <div className="mt-2">
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                            Check Number
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={debitNoteFormData.checkNumber}
-                                            onChange={(e) => handleFormChange('checkNumber', e.target.value)}
-                                            placeholder="Enter Check Number"
-                                            className='border border-gray-300 rounded-md px-4 py-2 w-full dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-600'
-                                        />
-                                    </div>
-                                )}
-
-                                {debitNoteFormData.paymentModeSlug === 'bank-deposit' && (
-                                    <div className="mt-2">
-                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                            Account
-                                        </label>
-                                        <SearchableDropdown
-                                            options={bankAccounts}
-                                            placeholder="Select Bank Account"
-                                            value={bankAccounts.find((acc) => acc.id === debitNoteFormData.bank) || null}
-                                            onChange={(e, value) => {
-                                                const selectedBank = value as IBankAccount;
-                                                handleFormChange('bank', selectedBank?.id || null);
-                                            }}
-                                        />
-                                    </div>
-                                )}
-                            </>
-
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Account</label>
+                                <SearchableDropdown
+                                    options={bankAccounts}
+                                    placeholder="Select Bank Account"
+                                    value={bankAccounts.find(b => b.id === invoiceFormData.bank) || null}
+                                    onChange={(e, value) => handleFormChange('bank', (value as IBankAccount)?.id || null)}
+                                />
+                            </div>
                         )}
                     </div>
 
@@ -1116,14 +1097,14 @@ const CreateDebitNote: React.FC = () => {
                         <p className="text-sm text-gray-500 dark:text-gray-400 capitalize">{totalInWords}</p>
 
                         <div className="flex items-center gap-4 pt-4">
-                            <div className="flex items-center"><input id="manual-sig" type="radio" name="signature" checked={debitNoteFormData.sign_type === 'digitalSignature'} onChange={() => handleFormChange('sign_type', 'digitalSignature')} className="h-4 w-4 text-purple-600 cursor-pointer" /><label htmlFor="manual-sig" className="ml-2 block text-sm text-gray-700 dark:text-gray-300 cursor-pointer">Manual Signature</label></div>
-                            <div className="flex items-center"><input id="e-sig" type="radio" name="signature" checked={debitNoteFormData.sign_type === 'eSignature'} onChange={() => handleFormChange('sign_type', 'eSignature')} className="h-4 w-4 text-purple-600 cursor-pointer" /><label htmlFor="e-sig" className="ml-2 block text-sm text-gray-700 dark:text-gray-300 cursor-pointer">eSignature</label></div>
+                            <div className="flex items-center"><input id="manual-sig" type="radio" name="signature" checked={invoiceFormData.sign_type === 'digitalSignature'} onChange={() => handleFormChange('sign_type', 'digitalSignature')} className="h-4 w-4 text-purple-600 cursor-pointer" /><label htmlFor="manual-sig" className="ml-2 block text-sm text-gray-700 dark:text-gray-300 cursor-pointer">Manual Signature</label></div>
+                            <div className="flex items-center"><input id="e-sig" type="radio" name="signature" checked={invoiceFormData.sign_type === 'eSignature'} onChange={() => handleFormChange('sign_type', 'eSignature')} className="h-4 w-4 text-purple-600 cursor-pointer" /><label htmlFor="e-sig" className="ml-2 block text-sm text-gray-700 dark:text-gray-300 cursor-pointer">eSignature</label></div>
                         </div>
 
-                        {debitNoteFormData.sign_type === 'digitalSignature' ? (
+                        {invoiceFormData.sign_type === 'digitalSignature' ? (
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Select Signature Name <span className="text-red-500">*</span></label>
-                                <select value={debitNoteFormData.signatureId || ''} onChange={(e) => handleFormChange('signatureId', e.target.value)} name='signatureId' className="border border-gray-300 rounded-md px-4 py-2 w-full dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-600">
+                                <select value={invoiceFormData.signatureId || ''} onChange={(e) => handleFormChange('signatureId', e.target.value)} name='signatureId' className="border border-gray-300 rounded-md px-4 py-2 w-full dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-600">
                                     <option value="" disabled>Select a signature</option>
                                     {manualSignatures.map(sig => <option key={sig.id} value={sig.id}>{sig.name}</option>)}
                                 </select>
@@ -1136,11 +1117,11 @@ const CreateDebitNote: React.FC = () => {
                         ) : (
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Signature Name <span className="text-red-500">*</span></label>
-                                <input name='signatureName' type="text" value={debitNoteFormData.signatureName} onChange={e => handleFormChange('signatureName', e.target.value)} placeholder="Enter Signature Name" className="border border-gray-300 rounded-md px-4 py-2 w-full dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-600" />
+                                <input name='signatureName' type="text" value={invoiceFormData.signatureName} onChange={e => handleFormChange('signatureName', e.target.value)} placeholder="Enter Signature Name" className="border border-gray-300 rounded-md px-4 py-2 w-full dark:bg-gray-800 text-gray-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-purple-600" />
                                 {formErrors?.signatureName && <p className="text-red-500 text-xs mt-1">{formErrors.signatureName}</p>}
                                 <p className="mt-2 text-sm font-medium text-gray-700 dark:text-gray-300">Draw your eSignature</p>
                                 <div className="mt-2 h-20 w-48 bg-gray-100 dark:bg-gray-700 rounded-md flex items-center justify-center cursor-pointer border-2 border-dashed border-gray-400" onClick={() => setSignatureModalOpen(true)}>
-                                    {debitNoteFormData.esignDataUrl ? <img src={debitNoteFormData.esignDataUrl} alt="Drawn Signature" className="max-h-full max-w-full" /> : <div className="text-center text-gray-500"><Edit3 size={20} className="mx-auto mb-1" /><span className="text-xs">Draw Signature</span></div>}
+                                    {invoiceFormData.esignDataUrl ? <img src={invoiceFormData.esignDataUrl} alt="Drawn Signature" className="max-h-full max-w-full" /> : <div className="text-center text-gray-500"><Edit3 size={20} className="mx-auto mb-1" /><span className="text-xs">Draw Signature</span></div>}
                                 </div>
                                 {formErrors?.esignDataUrl && <p className="text-red-500 text-xs mt-1">{formErrors.esignDataUrl}</p>}
                             </div>
@@ -1170,16 +1151,14 @@ const CreateDebitNote: React.FC = () => {
                 </Modal>
             </form>
 
-            {/* Payment Modal */}
-            <PaymentModal 
-                isOpen={isPaymentModalOpen}
-                onClose={() => setIsPaymentModalOpen(false)}
-                onConfirm={handlePaymentConfirm}
-                totalAmount={grandTotal}
-                paymentModes={paymentModes}
+            {/* Create Supplier Form */}
+            <CreateSupplierForm
+                isOpen={isSupplierModalOpen}
+                onClose={() => setIsSupplierModalOpen(false)}
+                onSuccess={() => setIsSupplierModalOpen(false)}
             />
         </div>
     );
 };
 
-export default CreateDebitNote;
+export default EditInvoice;
