@@ -37,6 +37,7 @@ import InvoiceTemplateList from "@pages/admin/invoices/InvoiceTemplateList";
 import CreateInvoice from "@pages/admin/invoices/CreateInvoice";
 import InvoiceList from "@pages/admin/invoices/InvoiceList";
 import EditInvoice from "@pages/admin/invoices/EditInvoice";
+import ViewInvoice from "@pages/admin/invoices/ViewInvoice";
 
 const AdminRoute = () => {
     return (
@@ -101,6 +102,9 @@ const AdminRoute = () => {
                     {/* Logout */}
                     <Route path="/logout" element={<AdminLogout />} />
                 </Route>
+
+                {/* No Layout Routes ex: print,pdf,view */}
+                <Route path="/view-invoice/:id" element={<ViewInvoice />} />
             </Route>
         </Routes>
     );

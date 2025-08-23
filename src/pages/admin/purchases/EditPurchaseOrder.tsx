@@ -9,7 +9,7 @@ import SearchableDropdown from '@components/admin/SearchableDropdown';
 import { useDebounce } from '@hooks/useDebounce';
 import Modal from '@components/admin/Modal';
 import SignatureCanvas from 'react-signature-canvas';
-import { toWords } from 'number-to-words';
+import { numberToWords } from '@utils/converters';
 import { toast } from 'react-toastify';
 import { useNavigate, useParams } from 'react-router-dom';
 import CreateSupplierForm from './CreateSupplierForm';
@@ -479,7 +479,7 @@ const EditPurchaseOrder: React.FC = () => {
 
     const totalInWords = useMemo(() => {
         if (grandTotal <= 0) return 'Zero';
-        return toWords(grandTotal).replace(/,/g, '').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ') + ' Only';
+        return numberToWords(grandTotal);
     }, [grandTotal]);
 
     const selectedManualSignatureImage = useMemo(() => {

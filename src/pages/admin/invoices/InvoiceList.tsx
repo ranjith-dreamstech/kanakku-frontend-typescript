@@ -7,7 +7,7 @@ import TableRow from "@components/admin/TableRow";
 import Constants from "@constants/api";
 import type { RootState } from "@store/index";
 import axios from "axios";
-import { CirclePlusIcon, Edit, Trash2Icon } from "lucide-react";
+import { CirclePlusIcon, Edit, LucideEye, Trash2Icon } from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
@@ -131,6 +131,11 @@ const InvoiceList: React.FC = () => {
 
     const tableActions = [
         {
+            label: 'View',
+            icon: <LucideEye size={14} />,
+            onClick: (item: Invoice) => { handleViewClick(item) }
+        },
+        {
             label: 'Edit',
             icon: <Edit size={14} />,
             onClick: (item: Invoice) => { handleEditClick(item) }
@@ -142,6 +147,9 @@ const InvoiceList: React.FC = () => {
         }
     ];
 
+    const handleViewClick = (item: Invoice) => {
+        navigate(`/admin/view-invoice/${item.id}`);
+    }
     const handleEditClick = (item: Invoice) => {
         navigate(`/admin/edit-invoice/${item.id}`);
     }
