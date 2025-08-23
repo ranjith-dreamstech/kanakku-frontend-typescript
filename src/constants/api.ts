@@ -1,5 +1,5 @@
-const API_BASE_URL = 'http://127.0.0.1:5000/api';
-const BASE_URL = 'http://127.0.0.1:5000';
+const API_BASE_URL = 'http://172.16.1.50:5000/api';
+const BASE_URL = 'http://172.16.1.50:5000/';
 const Constants = {
   API_BASE_URL,
   BASE_URL,

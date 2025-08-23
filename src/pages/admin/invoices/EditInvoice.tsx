@@ -9,12 +9,11 @@ import SearchableDropdown from '@components/admin/SearchableDropdown';
 import { useDebounce } from '@hooks/useDebounce';
 import Modal from '@components/admin/Modal';
 import SignatureCanvas from 'react-signature-canvas';
-import { toWords } from 'number-to-words';
 import { toast } from 'react-toastify';
 import { useNavigate, useParams } from 'react-router-dom';
 import CreateSupplierForm from '@pages/admin/purchases/CreateSupplierForm';
 import Switch from '@components/admin/Switch';
-
+import { numberToWords } from '@utils/converters';
 
 interface User {
     id: string;
@@ -520,7 +519,7 @@ const EditInvoice: React.FC = () => {
 
     const totalInWords = useMemo(() => {
         if (grandTotal <= 0) return 'Zero';
-        return toWords(grandTotal).replace(/,/g, '').split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ') + ' Only';
+        return numberToWords(grandTotal);
     }, [grandTotal]);
 
     const selectedManualSignatureImage = useMemo(() => {
